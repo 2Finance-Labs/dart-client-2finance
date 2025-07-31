@@ -1,7 +1,7 @@
 
 // lib/main_blockchain.dart
 
-import 'dart:nativewrappers/_internal/vm/lib/typed_data_patch.dart' show Uint8List;
+import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
 import 'dart:convert';
@@ -135,8 +135,6 @@ class TwoFinanceBlockchain {
       // para acessar o método length. Se isso falhar, então o ambiente é EXTREMAMENTE
       // restrito e precisaremos de detalhes da sua versão do SDK.
 
-      privateKeyBytes.
-
       // VERIFICAÇÃO DO COMPRIMENTO:
       if (privateKeyBytes.length < 32) { // <- ESTA LINHA DEVE FUNCIONAR. Se não, é um problema de ambiente.
         throw Exception("Chave privada muito curta para derivar a semente (precisa de pelo menos 32 bytes).");
@@ -174,6 +172,7 @@ class TwoFinanceBlockchain {
   }
 
   /// Converte uma string hexadecimal para uma lista de bytes.
+  /// Retorna Uint8List. Este método *cria* a Uint8List.
   Uint8List _hexToBytes(String hex) {
     if (hex.length % 2 != 0) {
       throw FormatException('String hexadecimal inválida. O comprimento deve ser par.');
