@@ -17,6 +17,8 @@ dependencies:
   cryptography: ^2.0.0 # Adicionando a dependência de criptografia
   flutter_dotenv: ^5.2.1
   convert: ^3.1.2
+  path_provider: ^2.1.2
+  web3dart: ^2.6.1 # for keccak256
 
 dev_dependencies:
   flutter_test:
@@ -50,6 +52,7 @@ flutter:
 
   assets:
     - assets/.env
+    - assets/certificates/emqxsl-ca.crt
 
   # For details regarding assets in packages, see
   # https://flutter.dev/to/asset-from-package
