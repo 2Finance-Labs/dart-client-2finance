@@ -105,12 +105,14 @@ class MqttClientWrapper implements MqttClientInterface {
 
   @override
   Future<void> publish(String topic, String payload) async {
+    print('Publishing to $topic: $payload');
     final builder = MqttClientPayloadBuilder()..addString(payload);
     _client?.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
   }
 
   @override
   Future<void> subscribe(String topic, {MessageHandler? handler}) async {
+    print('Subscribing to $topic');
     _client?.subscribe(topic, MqttQos.atLeastOnce);
 
     if (handler != null) {
@@ -126,10 +128,6 @@ class MqttClientWrapper implements MqttClientInterface {
   Future<void> unsubscribe(String topic) async {
     _client?.unsubscribe(topic);
   }
-
-
-
-
 
   void _onConnected() => print('MQTT connected');
   void _onDisconnected() => print('MQTT disconnected');

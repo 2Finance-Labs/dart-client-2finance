@@ -59,22 +59,24 @@ class KeyManager {
     return Uint8List.fromList(bytes);
   }
 
-  /// Valida uma chave pública Ed25519 codificada em hexadecimal.
-    /// Retorna `null` se for válida, ou lança uma [FormatException] se for inválida.
     static void validateEdDSAPublicKey(String publicKeyHex) {
+        if (publicKeyHex.isEmpty) {
+            throw FormatException('Public key cannot be empty.');
+        }
+        print('Validating public key: $publicKeyHex');
         final bytes = KeyManager.hexToBytes(publicKeyHex);
 
         // Verifica o tamanho: Ed25519 usa 32 bytes para a chave pública
         if (bytes.length != 32) {
             throw FormatException(
-            'Tamanho inválido da chave pública: recebido ${bytes.length}, esperado 32 bytes.',
+            'Size of public key must be 32 bytes (64 hex characters), received: ${bytes.length} bytes.'
             );
         }
 
         // Verifica se todos os bytes são zero
         final isAllZero = bytes.every((b) => b == 0);
         if (isAllZero) {
-            throw FormatException('Chave pública inválida: todos os bytes são zero.');
+            throw FormatException('Invalid public key: all bytes are zero.');
         }
     }
 }

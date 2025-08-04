@@ -97,7 +97,7 @@ class Transaction implements ITransaction {
     if (from == to) throw Exception("sender and recipient cannot be the same");
 
     KeyManager.validateEdDSAPublicKey(from);
-    if (to != '' && to != deployContractAddress) {
+    if (to != '' && to != DEPLOY_CONTRACT_ADDRESS) {
       KeyManager.validateEdDSAPublicKey(to);
     }
 

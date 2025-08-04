@@ -10,6 +10,7 @@ import 'package:mqtt_client/mqtt_client.dart' show MqttClient, MqttConnectionSta
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/blockchain/transaction/transaction.dart';
+import 'package:two_finance_blockchain/blockchain/types/types.dart';
 
 void main() {
   runApp(const MyApp());
@@ -25,7 +26,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   String _platformVersion = 'Unknown';
   // Instância do plugin TwoFinanceBlockchain
-  late MqttClientWrapper client;
+  late MqttClientWrapper mqttClient;
   late TwoFinanceBlockchain _twoFinanceBlockchainPlugin;
   late KeyManager keyManager;
   
@@ -61,43 +62,30 @@ class _MyAppState extends State<MyApp> {
     });
   }
 
-  Future<MqttClientWrapper> testMqttClient() async {
+  Future<void> testMqttClient() async {
   try {
-    await Config.loadConfig(env: 'prod', path: 'packages/two_finance_blockchain/assets/.env');
-
-    final client = MqttClientWrapper(
-      host: Config.emqxHost,
-      port: Config.emqxPort,
-      clientId: Config.emqxClientId,
-      useSSL: Config.emqxSSL,
-      username: Config.emqxUsername,
-      password: Config.emqxPassword,
-      caCertPath: Config.emqxCaCertPath,
-    );
 
     print('🔌 Connecting...');
-    await client.connect();
+    await mqttClient.connect();
 
     print('📡 Subscribing...');
-    await client.subscribe('test/topic', handler: (mqttClient, message) {
+    await mqttClient.subscribe('test/topic', handler: (mqttClient, message) {
       final mqttMessage = message.payload as MqttPublishMessage;
       final payload = MqttPublishPayload.bytesToStringAsString(mqttMessage.payload.message);
       print('📥 Message received on ${message.topic}: $payload');
     });
 
     print('📤 Publishing...');
-    await client.publish('test/topic', 'Hello from Flutter MQTT!');
+    await mqttClient.publish('test/topic', 'Hello from Flutter MQTT!');
 
-    await Future.delayed(const Duration(seconds: 3));
+    //await Future.delayed(const Duration(seconds: 3));
 
     print('🚫 Unsubscribing...');
-    await client.unsubscribe('test/topic');
+    await mqttClient.unsubscribe('test/topic');
 
     print('🔌 Disconnecting...');
-    await client.disconnect();
-
-    print('✅ Test complete');
-    return client;
+    await mqttClient.disconnect();
+    print('✅ MQTT Client test completed successfully.');
     } catch (e) {
       print('❌ Error: $e');
       rethrow; // throws the error up to the caller
@@ -110,7 +98,7 @@ class _MyAppState extends State<MyApp> {
 
       await Config.loadConfig(env: 'prod', path: 'packages/two_finance_blockchain/assets/.env');
       
-      client = MqttClientWrapper(
+      mqttClient = MqttClientWrapper(
         host: Config.emqxHost,
         port: Config.emqxPort,
         clientId: Config.emqxClientId,
@@ -119,7 +107,7 @@ class _MyAppState extends State<MyApp> {
         password: Config.emqxPassword,
         caCertPath: Config.emqxCaCertPath,
       );
-
+      await mqttClient.connect();
       print('Initializing TwoFinanceBlockchain plugin...');
       
       keyManager = KeyManager();
@@ -127,7 +115,7 @@ class _MyAppState extends State<MyApp> {
       // ✅ Correct assignment to class-level field
       final plugin = TwoFinanceBlockchain(
         keyManager: keyManager,
-        mqttClient: client,
+        mqttClient: mqttClient,
       );
 
       return plugin;
@@ -138,41 +126,41 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> testBlockchain() async {
+    print('Plugin initialized successfully.');
+    await _twoFinanceBlockchainPlugin.initialize();
+    
+    final keyPair1 = await _twoFinanceBlockchainPlugin.generateKeyEd25519();
+    final keyPair2 = await _twoFinanceBlockchainPlugin.generateKeyEd25519();
 
-    try {
+    await _twoFinanceBlockchainPlugin.setPrivateKey(keyPair1.privateKey);
+    final publicKey1 = keyPair1.publicKey;
+    final publicKey2 = keyPair2.publicKey;
+    print('Private Key: ${keyPair1.privateKey}');
+    print('Public Key: $publicKey1');
+    print('Receiver Public Key: $publicKey2');
+    
+    const String WALLET_CONTRACT_V1 = 'wallet_v1';
+    const String METHOD_ADD_WALLET = 'add_Wallet';
 
-      print('Plugin initialized successfully.');
-      await _twoFinanceBlockchainPlugin.initialize();
-      final keyPair1 = await _twoFinanceBlockchainPlugin.generateKeyEd25519();
-      final keyPair2 = await _twoFinanceBlockchainPlugin.generateKeyEd25519();
+    // Dart version of the Go map[string]interface{}
+    final String to = DEPLOY_CONTRACT_ADDRESS;
+    final String contractVersion = WALLET_CONTRACT_V1;
+    final String method = METHOD_ADD_WALLET;
+    final Map<String, dynamic> data = {
+      'public_key': publicKey1,
+      'amount': '0',
+    };
 
-      await _twoFinanceBlockchainPlugin.setPrivateKey(keyPair1.privateKey);
-      final publicKey1 = keyPair1.publicKey;
-      final publicKey2 = keyPair2.publicKey;
-      print('Private Key: ${keyPair1.privateKey}');
-      print('Public Key: $publicKey1');
-      print('Receiver Public Key: $publicKey2');
+    final contractOutput = await _twoFinanceBlockchainPlugin.sendTransaction(
+      from: publicKey1,
+      to: to,
+      contractVersion: contractVersion,
+      method: method,
+      data: data,
+    );
 
-      final tx = Transaction.create(
-          from: publicKey1,
-          to: publicKey2,
-          timestamp: DateTime.now().toUtc(),
-          contractVersion: '1.0',
-          method: 'transfer',
-          data: {'amount': 100},
-          nonce: 1,
-        );
+    print(contractOutput);
 
-      await signTransaction(keyPair1.privateKey, tx);
-      await tx.validate();
-      print(tx);
-
-      print('Transaction validated successfully: $tx');
-  
-
-    } catch (e) {
-      print('Error: $e');
-    }
   }
 
  @override

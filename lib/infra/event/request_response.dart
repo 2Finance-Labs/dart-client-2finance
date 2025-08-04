@@ -1,5 +1,5 @@
-const String TRANSACTIONS_REQUEST_TOPIC = "blockchain/request/+";
-const String TRANSACTIONS_RESPONSE_TOPIC = "blockchain/response";
+const String TRANSACTIONS_REQUEST_TOPIC = "request/+";
+const String TRANSACTIONS_RESPONSE_TOPIC = "response";
 
 const String RESPONSE_STATUS_SUCCESS = "success";
 const String RESPONSE_STATUS_ERROR = "error";
