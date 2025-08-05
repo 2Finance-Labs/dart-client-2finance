@@ -33,4 +33,4 @@ migrate_working_dir/
 build/
 
 assets/.env
-assets/certificates/
+assets/certificates/emqxsl-ca.crt
