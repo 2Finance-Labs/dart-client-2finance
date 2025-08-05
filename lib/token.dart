@@ -51,31 +51,6 @@ extension Token on TwoFinanceBlockchain {
     const String contractVersion = TOKEN_CONTRACT_V1;
     const String method = METHOD_ADD_TOKEN;
 
-    // final Map<String, dynamic> data = {
-    //   "symbol": symbol,
-    //   "name": name,
-    //   "decimals": decimals,
-    //   "total_supply": totalSupply,
-    //   "description": description,
-    //   "owner": owner,
-    //   "fee_tiers_list": feeTiersList,
-    //   "fee_address": feeAddress,
-    //   "image": image,
-    //   "website": website,
-    //   "tags_social_media": tagsSocialMedia,
-    //   "tags_category": tagsCategory,
-    //   "tags": tags,
-    //   "creator": creator,
-    //   "creator_website": creatorWebsite,
-    //   "allow_users": allowUsers,
-    //   "block_users": blockUsers,
-    //   "freeze_authority_revoked": freezeAuthorityRevoked,
-    //   "mint_authority_revoked": mintAuthorityRevoked,
-    //   "update_authority_revoked": updateAuthorityRevoked,
-    //   "paused": paused,
-    //   "expired_at": expiredAt.toUtc().toIso8601String(),
-    // };
-
     final Map<String, dynamic> data = {
       "allow_users": allowUsers,
       "block_users": blockUsers,
