@@ -1,0 +1,1 @@
+# Documentação específica da lib (ex: uso de src/)
