@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
-import 'package:web3dart/crypto.dart'; // for keccak256
+import 'package:web3dart/crypto.dart';
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/blockchain/types/types.dart';
 
@@ -12,7 +12,7 @@ abstract class ITransaction {
   Future<void> validate();
   Future<void> validateTimestamp();
   Future<void> validateHash();
-  Future<void> validateSignature();
+  Future<void> verifySignature();
   Future<String> calculateHash();
   BigInt calculateFeeGas(int gasLimit, BigInt gasPriceWei);
   Transaction get();
@@ -102,7 +102,7 @@ class Transaction implements ITransaction {
     }
 
     await validateHash();
-    await validateSignature();
+    await verifySignature();
   }
 
   @override
@@ -123,7 +123,7 @@ class Transaction implements ITransaction {
   }
 
   @override
-  Future<void> validateSignature() async {
+  Future<void> verifySignature() async {
     final algorithm = Ed25519();
     final hashBytes = KeyManager.hexToBytes(await calculateHash());
     final pubKey = SimplePublicKey(KeyManager.hexToBytes(from), type: KeyPairType.ed25519);
@@ -142,9 +142,8 @@ class Transaction implements ITransaction {
   @override
   Future<String> calculateHash() async {
     final temp = toJson();
-    temp.remove('hash');
-    temp.remove('signature');
-
+    temp['hash'] = '';
+    temp['signature'] = '';
     final encoded = utf8.encode(jsonEncode(temp));
     final hash = keccak256(Uint8List.fromList(encoded));
     return KeyManager.bytesToHex(hash);

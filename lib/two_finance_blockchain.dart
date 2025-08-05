@@ -1,16 +1,12 @@
-
-// lib/main_blockchain.dart
+library two_finance_blockchain;
 
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-
-
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter/services.dart';
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/blockchain/contract/constants.dart';
-
 import 'package:flutter_dotenv/flutter_dotenv.dart' show dotenv; // Para encodar as chaves em base64 ou hex, se necessário.
 import 'package:two_finance_blockchain/infra/mqtt/mqtt.dart';
 import 'package:two_finance_blockchain/infra/event/request_response.dart';
@@ -18,8 +14,13 @@ import 'package:mqtt_client/mqtt_client.dart' show MqttClient, MqttConnectionSta
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:two_finance_blockchain/blockchain/transaction/transaction.dart';
 import 'package:two_finance_blockchain/blockchain/types/types.dart';
- 
+import 'package:two_finance_blockchain/blockchain/contract/walletV1/constants.dart';
+import 'package:two_finance_blockchain/blockchain/contract/tokenV1/constants.dart';
+import 'package:two_finance_blockchain/blockchain/contract/tokenV1/domain/token.dart';
 import 'package:uuid/uuid.dart';
+
+part 'wallet.dart';
+part 'token.dart';
 
 
 class TwoFinanceBlockchain {
@@ -106,7 +107,7 @@ class TwoFinanceBlockchain {
     final transactionInput = {'from': publicKey};
 
     final outputBytes = await handlerRequest(
-      RequestMethods.getNonce,
+      REQUEST_METHOD_GET_NONCE,
       transactionInput,
       _replyTo,
     );
@@ -146,12 +147,9 @@ class TwoFinanceBlockchain {
       const Duration(seconds: 10),
       onTimeout: () => throw Exception("timeout waiting for response on topic $responseTopic"),
     );
-    print("Response received: ${responseBytes}");
     final decoded = json.decode(responseBytes);
     final resp = ResponsePayload.fromJson(decoded);
-    print("Response received: $resp");
-    print("Response status: ${resp.status}");
-    print("Method: $method");
+
     if (resp.status == RESPONSE_STATUS_ERROR) {
       if (resp.message?.contains("record not found") == true && method == "get_nonce") {
         return Uint8List.fromList(utf8.encode("0")); // Return zero as fallback
@@ -169,12 +167,6 @@ class TwoFinanceBlockchain {
     required String method,
     required Map<String, dynamic> data,
   }) async {
-    // Validate the public key
-    print('Validating public key: $from');
-    print('Validating recipient public key: $to');
-    print('Validating contract version: $contractVersion');
-    print('Validating method: $method');
-    print('Validating data: $data');
     KeyManager.validateEdDSAPublicKey(from);
     // Get current nonce and handle "record not found"
     int nonce;
@@ -209,10 +201,11 @@ class TwoFinanceBlockchain {
     }
 
     await signTransaction(privateKey, tx);
-
+    print('Transaction signed successfully: ${tx}');
+    
     // Send to network
     final responseBytes = await handlerRequest(
-      RequestMethods.send,
+      REQUEST_METHOD_SEND_TRANSACTION,
       tx,
       _replyTo!,
     );
@@ -220,6 +213,35 @@ class TwoFinanceBlockchain {
     // Decode response
     final decoded = json.decode(utf8.decode(responseBytes));
     return ContractOutput.fromJson(decoded);
+  }
+
+  Future<ContractOutput> getState({
+    required String contractVersion,
+    required String method,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      // Build a transaction input without signature and hash
+      final txInput = {
+        'contract_version': contractVersion,
+        'method': method,
+        'data': data, // assuming Map<String, dynamic>
+      };
+
+      // Make the request (this uses your existing MQTT plugin or handler)
+      final responseBytes = await handlerRequest(
+        REQUEST_METHOD_GET_STATE,
+        txInput,
+        _replyTo!,
+      );
+
+      // Decode JSON response
+      final Map<String, dynamic> contractOutputJson = json.decode(utf8.decode(responseBytes));
+
+      return ContractOutput.fromJson(contractOutputJson);
+    } catch (e) {
+      throw Exception('failed to get state: $e');
+    }
   }
 
 

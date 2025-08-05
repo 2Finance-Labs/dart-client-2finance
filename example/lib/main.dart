@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/services.dart';
 import 'package:two_finance_blockchain/two_finance_blockchain.dart';
@@ -11,6 +12,7 @@ import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/blockchain/transaction/transaction.dart';
 import 'package:two_finance_blockchain/blockchain/types/types.dart';
+import 'package:two_finance_blockchain/blockchain/contract/walletV1/constants.dart';
 
 void main() {
   runApp(const MyApp());
@@ -92,6 +94,11 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  String generateRandomSuffix(int length) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final rand = Random.secure();
+    return List.generate(length, (_) => chars[rand.nextInt(chars.length)]).join();
+  }
 
   Future<TwoFinanceBlockchain> initBlockchain() async {
     try {
@@ -139,27 +146,108 @@ class _MyAppState extends State<MyApp> {
     print('Public Key: $publicKey1');
     print('Receiver Public Key: $publicKey2');
     
-    const String WALLET_CONTRACT_V1 = 'wallet_v1';
-    const String METHOD_ADD_WALLET = 'add_Wallet';
+    final contractOutput = await _twoFinanceBlockchainPlugin.addWallet(publicKey1);
+    print(contractOutput);
+    final getWalletOutput = await _twoFinanceBlockchainPlugin.getWallet(publicKey1);
+    print(getWalletOutput);
 
-    // Dart version of the Go map[string]interface{}
-    final String to = DEPLOY_CONTRACT_ADDRESS;
-    final String contractVersion = WALLET_CONTRACT_V1;
-    final String method = METHOD_ADD_WALLET;
-    final Map<String, dynamic> data = {
-      'public_key': publicKey1,
-      'amount': '0',
+
+    final String baseSymbol = "2F";
+    final String suffix = generateRandomSuffix(4); // Implemented below
+    final String symbol = "$baseSymbol$suffix";
+
+    final String name = "2Finance";
+    final int decimals = 3;
+    final String totalSupply = "10";
+    final String description =
+        "2Finance is a decentralized finance platform that offers a range of financial services, including lending, borrowing, and trading.";
+
+    final String owner = publicKey1; // Replace with your actual variable
+    final String image = "https://example.com/image.png";
+    final String website = "https://example.com";
+
+    final Map<String, String> tagsSocialMedia = {
+      "twitter": "https://twitter.com/2finance",
     };
 
-    final contractOutput = await _twoFinanceBlockchainPlugin.sendTransaction(
-      from: publicKey1,
-      to: to,
-      contractVersion: contractVersion,
-      method: method,
-      data: data,
-    );
+    final Map<String, String> tagsCategory = {
+      "category": "DeFi",
+    };
 
-    print(contractOutput);
+    final Map<String, String> tags = {
+      "tag1": "DeFi",
+      "tag2": "Blockchain",
+    };
+
+    final String creator = "2Finance Creator";
+    final String creatorWebsite = "https://creator.com";
+
+    final Map<String, bool> allowUsers = {
+      "43b23ffdd134ff73eda6cad0a5bd0d97877dd63ab8ba21ffe49d80fe51fd5dec": true,
+    };
+
+    final Map<String, bool> blockUsers = {
+      "e8ef1e9a97c08ce9ba388b5df7f43964ce19317c3a77338d39d80898cbe22914": true,
+    };
+
+    final List<Map<String, dynamic>> feeTiersList = [
+      // {
+      //   "fee_bps": 50,
+      //   "max_amount": "1000000000000000000",
+      //   "min_amount": "0",
+      //   "max_volume": "10000000000000000000",
+      //   "min_volume": "0",
+      // },
+      // {
+      //   "fee_bps": 25,
+      //   "max_amount": "10000000000000000000",
+      //   "min_amount": "1000000000000000001",
+      //   "max_volume": "50000000000000000000",
+      //   "min_volume": "10000000000000000001",
+        
+      // },
+    ];
+
+    final String feeAddress = "fe1b01a9861bb265b141c00517d7697c8a0d8286492a14d776ca33ffdded43c1";
+
+    final bool freezeAuthorityRevoked = false;
+    final bool mintAuthorityRevoked = false;
+    final bool updateAuthorityRevoked = false;
+    final bool paused = false;
+
+    final DateTime expiredAt = DateTime.now().toUtc().add(const Duration(days: 30));
+
+    try {
+      final contractOutput = await _twoFinanceBlockchainPlugin.addToken(
+        symbol: symbol,
+        name: name,
+        decimals: decimals,
+        totalSupply: totalSupply,
+        description: description,
+        owner: owner,
+        image: image,
+        website: website,
+        tagsSocialMedia: tagsSocialMedia,
+        tagsCategory: tagsCategory,
+        tags: tags,
+        creator: creator,
+        creatorWebsite: creatorWebsite,
+        allowUsers: allowUsers,
+        blockUsers: blockUsers,
+        feeTiersList: feeTiersList,
+        feeAddress: feeAddress,
+        freezeAuthorityRevoked: freezeAuthorityRevoked,
+        mintAuthorityRevoked: mintAuthorityRevoked,
+        updateAuthorityRevoked: updateAuthorityRevoked,
+        paused: paused,
+        expiredAt: expiredAt,
+      );
+
+      print("✅ Token created successfully: ${contractOutput.toJson()}");
+    } catch (e) {
+      print("❌ Error adding token: $e");
+    }
+
 
   }
 
