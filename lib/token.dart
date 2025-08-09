@@ -1,4 +1,5 @@
 
+import 'package:two_finance_blockchain/blockchain/utils/decimals.dart';
 
 part of two_finance_blockchain;
 
@@ -21,10 +22,10 @@ extension Token on TwoFinanceBlockchain {
     required Map<String, bool> blockUsers,
     required List<Map<String, dynamic>> feeTiersList,
     required String feeAddress,
-    required bool freezeAuthorityRevoked,
-    required bool mintAuthorityRevoked,
-    required bool updateAuthorityRevoked,
-    required bool paused,
+    bool freezeAuthorityRevoked = false,
+    bool mintAuthorityRevoked = false,
+    bool updateAuthorityRevoked = false,
+    bool paused = false,
     required DateTime expiredAt,
   }) async {
     // Validate required fields
@@ -76,6 +77,56 @@ extension Token on TwoFinanceBlockchain {
       "website": website,
     };
 
+
+    try {
+      final contractOutput = await sendTransaction(
+        from: from,
+        to: to,
+        contractVersion: contractVersion,
+        method: method,
+        data: data,
+      );
+      return contractOutput;
+    } catch (e) {
+      throw Exception('failed to send transaction: $e');
+    }
+  }
+
+  Future<ContractOutput> mintToken({
+    required String to,         // Token contract address
+    required String mintTo,     // Recipient address
+    required String amount,
+    required int decimals,
+  }) async {
+    final String from = _activePublicKey!;
+    if (from.isEmpty) throw ArgumentError('from address not set');
+    if (to.isEmpty) throw ArgumentError('token address not set');
+    if (mintTo.isEmpty) throw ArgumentError('mint to address not set');
+    if (amount.isEmpty) throw ArgumentError('amount not set');
+
+    // Validate keys
+    KeyManager.validateEdDSAPublicKey(from);
+    KeyManager.validateEdDSAPublicKey(to);
+    KeyManager.validateEdDSAPublicKey(mintTo);
+
+    // Convert amount if decimals > 0
+    String finalAmount = amount;
+    if (decimals != 0) {
+      try {
+        finalAmount = DecimalRescaler.rescaleString(amount, 0, decimals);
+      } catch (e) {
+        throw Exception('failed to convert amount to target decimals: $e');
+      }
+    }
+
+    const String contractVersion = TOKEN_CONTRACT_V1;
+    const String method = METHOD_MINT_TOKEN;
+
+    final Map<String, dynamic> data = {
+      "amount": finalAmount,
+      "mint_to": mintTo,
+      "token_address": to,
+    };
 
     try {
       final contractOutput = await sendTransaction(
