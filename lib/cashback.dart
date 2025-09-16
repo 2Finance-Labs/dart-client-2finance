@@ -4,10 +4,10 @@ import 'package:two_finance_blockchain/blockchain/contract/cashbackV1.dart' as c
 import 'package:two_finance_blockchain/blockchain/keys.dart' as keys;
 import 'package:two_finance_blockchain/blockchain/types.dart';
 
-class NetworkClient {
+class Cashback {
   final String publicKey;
 
-  NetworkClient({required this.publicKey});
+  Cashback({required this.publicKey});
 
   /// Mock dos métodos SendTransaction e GetState
   /// Substitua com sua implementação real
@@ -60,13 +60,13 @@ class NetworkClient {
     final method = cashbackV1.METHOD_ADD_CASHBACK;
 
     final data = {
-      "owner": owner,
-      "token_address": tokenAddress,
-      "program_type": programType,
-      "percentage": percentage,
-      "start_at": startAt.toIso8601String(),
       "expired_at": expiredAt.toIso8601String(),
+      "owner": owner,
       "paused": paused,
+      "percentage": percentage,
+      "program_type": programType,
+      "start_at": startAt.toIso8601String(),
+      "token_address": tokenAddress,
     };
 
     try {
@@ -104,11 +104,11 @@ class NetworkClient {
 
     final data = {
       "address": address,
-      "token_address": tokenAddress,
-      "program_type": programType,
-      "percentage": percentage,
-      "start_at": startAt.toIso8601String(),
       "expired_at": expiredAt.toIso8601String(),
+      "percentage": percentage,
+      "program_type": programType,
+      "start_at": startAt.toIso8601String(),
+      "token_address": tokenAddress,
     };
 
     return sendTransaction(from, to, contractVersion, method, data);
@@ -239,15 +239,14 @@ class NetworkClient {
     final contractVersion = cashbackV1.CASHBACK_CONTRACT_V1;
     final method = cashbackV1.METHOD_LIST_CASHBACKS;
     final data = {
-      "owner": owner,
-      "token_address": tokenAddress,
-      "program_type": programType,
-      "paused": paused,
-      "page": page,
-      "limit": limit,
       "ascending": ascending,
+      "limit": limit,
+      "owner": owner,
+      "page": page,
+      "paused": paused,
+      "program_type": programType,
+      "token_address": tokenAddress,
     };
-
     return getState(contractVersion, method, data);
   }
 
