@@ -1,7 +1,7 @@
 
-import 'package:two_finance_blockchain/blockchain/utils/decimals.dart';
 
-part of two_finance_blockchain;
+
+part of 'two_finance_blockchain.dart';
 
 extension Token on TwoFinanceBlockchain {
   Future<ContractOutput> addToken({

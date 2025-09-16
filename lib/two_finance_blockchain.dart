@@ -18,7 +18,7 @@ import 'package:two_finance_blockchain/blockchain/contract/walletV1/constants.da
 import 'package:two_finance_blockchain/blockchain/contract/tokenV1/constants.dart';
 import 'package:two_finance_blockchain/blockchain/contract/tokenV1/domain/token.dart';
 import 'package:uuid/uuid.dart';
-
+import 'package:two_finance_blockchain/blockchain/utils/decimals.dart';
 part 'wallet.dart';
 part 'token.dart';
 
