@@ -1,0 +1,1 @@
+const String METHOD_ADD_RAFFLE = "add_Token";

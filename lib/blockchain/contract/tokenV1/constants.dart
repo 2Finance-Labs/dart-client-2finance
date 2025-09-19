@@ -20,8 +20,10 @@ const String METHOD_UPDATE_METADATA = "update_Metadata";
 const String METHOD_UPDATE_FEE_TIERS = "update_FeeTiers";
 const String METHOD_UPDATE_FEE_ADDRESS = "update_FeeAddress";
 
+
 // Read (query) methods
 const String METHOD_GET_TOKEN_BALANCE = "get_TokenBalance";
 const String METHOD_GET_TOKEN = "get_Token";
 const String METHOD_LIST_TOKENS = "list_Tokens";
 const String METHOD_LIST_TOKEN_BALANCES = "list_TokenBalances";
+
