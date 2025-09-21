@@ -1,14 +1,10 @@
 import 'dart:async';
-
-import 'package:two_finance_blockchain/blockchain/contract/reviewV1.dart' as reviewV1;
-import 'package:two_finance_blockchain/blockchain/keys.dart' as keys;
-import 'package:two_finance_blockchain/blockchain/types.dart';
-
-class Review {
-  final String publicKey;
-
-  Review({required this.publicKey});
-
+import 'blockchain/contract/reviewV1/constants.dart';
+import 'blockchain/keys/keys.dart';
+import 'blockchain/types/types.dart';
+part of 'two_finance_blockchain.dart';
+extension Review on TwoFinanceBlockchain{
+ 
   /// Mock dos métodos sendTransaction e getState
   /// Substitua com sua implementação real
   Future<ContractOutput> sendTransaction(
@@ -216,29 +212,69 @@ class Review {
     return getState(contractVersion, method, data);
   }
 
-  Future<ContractOutput> listReviews({
-    String? owner,
-    String? reviewer,
-    String? reviewee,
-    String? subjectType,
-    String? subjectID,
-    bool? includeHidden,
-    int minRating = 0,
-    int maxRating = 5,
-    required int page,
-    required int limit,
-    required bool asc,
-  }) async {
-    final from = publicKey;
-    if (from.isEmpty) throw Exception("from address not set");
-    keys.validateEDDSAPublicKey(from);
+Future<ContractOutput> listReviews({
+  String owner = '',
+  String reviewer = '',
+  String reviewee = '',
+  String subjectType = '',
+  String subjectId = '',
+  bool? includeHidden,
+  int minRating = 0,
+  int maxRating = 0,
+  int page = 1,
+  int limit = 10,
+  bool asc = true,
+}) async {
+  final from = _activePublicKey ?? '';
+  if (from.isEmpty) {
+    throw Exception('from address not set');
+  }
 
-    if (owner != null && owner.isNotEmpty) keys.validateEDDSAPublicKey(owner);
-    if (reviewer != null && reviewer.isNotEmpty) keys.validateEDDSAPublicKey(reviewer);
-    if (reviewee != null && reviewee.isNotEmpty) keys.validateEDDSAPublicKey(reviewee);
+  KeyManager.validateEdDSAPublicKey(from);
 
-    if (page < 1) throw Exception("page must be greater than 0");
-    if (limit < 1) throw Exception("limit must be greater than 0");
-    if (minRating < 0 || minRating > 5) throw Exception("min_rating must be between 0 and 5");
-    if (maxRating < 0 || maxRating > 5) throw Exception("max_rating must be between 0 and 5");
-    if (maxRating != 0 && minRating > maxRating) throw Exception("min_rating cannot be greater than max_rating
+  // Validações opcionais
+  if (owner.isNotEmpty) {
+    KeyManager.validateEdDSAPublicKey(owner);
+  }
+  if (reviewer.isNotEmpty) {
+    KeyManager.validateEdDSAPublicKey(reviewer);
+  }
+  if (reviewee.isNotEmpty) {
+    KeyManager.validateEdDSAPublicKey(reviewee);
+  }
+
+  if (page < 1) throw Exception('page must be greater than 0');
+  if (limit < 1) throw Exception('limit must be greater than 0');
+  if (minRating < 0 || minRating > 5) {
+    throw Exception('min_rating must be between 0 and 5');
+  }
+  if (maxRating < 0 || maxRating > 5) {
+    throw Exception('max_rating must be between 0 and 5');
+  }
+  if (maxRating != 0 && minRating > maxRating) {
+    throw Exception('min_rating cannot be greater than max_rating');
+  }
+
+  const contractVersion = REVIEW_CONTRACT_V1;
+  const method = METHOD_LIST_REVIEWS;
+
+  final data = <String, dynamic>{
+    "reviewer": reviewer,
+    "reviewee": reviewee,
+    "subject_id": subjectId,
+    "subject_type": subjectType,
+    "min_rating": minRating,
+    "max_rating": maxRating,
+    "page": page,
+    "limit": limit,
+    "ascending": asc,
+  };
+
+  if (includeHidden != null) {
+    data["include_hidden"] = includeHidden;
+  }
+
+  return await getState(contractVersion, method, data);
+}
+
+}

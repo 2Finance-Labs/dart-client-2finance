@@ -551,7 +551,7 @@ Future<ContractOutput> updateMetadata(
     );
 
     final tx = newTx.get();
-    final txSigned = signTransaction(keys.privateKey, tx);
+    final txSigned = signTransaction( activePrivateKey ?? "", tx);
 
     final contractOutputBytes = await handlerRequest(
       REQUEST_METHOD_SEND_TRANSACTION,
