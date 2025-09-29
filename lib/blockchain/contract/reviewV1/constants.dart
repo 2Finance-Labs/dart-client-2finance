@@ -1,2 +1,9 @@
 const String REVIEW_CONTRACT_V1 = "review_v1";
 const String METHOD_LIST_REVIEWS = "list_reviews";
+const String METHOD_ADD_REVIEW = "add_review";
+const String METHOD_UPDATE_REVIEW = "update_review";
+const String METHOD_HIDE_REVIEW = "hide_review";
+const String METHOD_VOTE_HELPFUL = "vote_helpful";
+const String METHOD_REPORT_REVIEW = "report_preview";
+const String METHOD_MODERATE_REVIEW = "moderate_review";
+const String METHOD_GET_REVIEW = "get_review";

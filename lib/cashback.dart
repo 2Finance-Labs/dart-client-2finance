@@ -1,35 +1,9 @@
-import 'dart:async';
 
-import 'package:two_finance_blockchain/blockchain/contract/cashbackV1.dart' as cashbackV1;
-import 'package:two_finance_blockchain/blockchain/keys.dart' as keys;
-import 'package:two_finance_blockchain/blockchain/types.dart';
-
-class Cashback {
-  final String publicKey;
-
-  Cashback({required this.publicKey});
+part of 'two_finance_blockchain.dart';
+extension Cashback on TwoFinanceBlockchain{
 
   /// Mock dos métodos SendTransaction e GetState
   /// Substitua com sua implementação real
-  Future<ContractOutput> sendTransaction(
-      String from,
-      String to,
-      String contractVersion,
-      String method,
-      Map<String, dynamic> data,
-      ) async {
-    // Implementação real aqui
-    return ContractOutput();
-  }
-
-  Future<ContractOutput> getState(
-      String contractVersion,
-      String method,
-      Map<String, dynamic> data,
-      ) async {
-    // Implementação real aqui
-    return ContractOutput();
-  }
 
   Future<ContractOutput> addCashback({
     required String owner,
@@ -40,15 +14,18 @@ class Cashback {
     required DateTime expiredAt,
     required bool paused,
   }) async {
-    final from = publicKey;
+    final from = _activePublicKey!;
     if (from.isEmpty) throw Exception("from address not set");
-    keys.validateEDDSAPublicKey(from);
+    KeyManager.validateEdDSAPublicKey(from!);
+    //keys.validateEDDSAPublicKey(from);
 
     if (owner.isEmpty) throw Exception("owner not set");
-    keys.validateEDDSAPublicKey(owner);
+    KeyManager.validateEdDSAPublicKey(owner);
+    //keys.validateEDDSAPublicKey(owner);
 
     if (tokenAddress.isEmpty) throw Exception("token address not set");
-    keys.validateEDDSAPublicKey(tokenAddress);
+    KeyManager.validateEdDSAPublicKey(tokenAddress);
+    //keys.validateEDDSAPublicKey(tokenAddress);
 
     if (programType != "fixed-percentage" && programType != "variable-percentage") {
       throw Exception("invalid programType: $programType");
@@ -56,8 +33,8 @@ class Cashback {
     if (percentage.isEmpty) throw Exception("percentage not set");
 
     final to = types.DEPLOY_CONTRACT_ADDRESS;
-    final contractVersion = cashbackV1.CASHBACK_CONTRACT_V1;
-    final method = cashbackV1.METHOD_ADD_CASHBACK;
+    final contractVersion = CASHBACK_CONTRACT_V1;
+    final method = METHOD_ADD_CASHBACK;
 
     final data = {
       "expired_at": expiredAt.toIso8601String(),
@@ -70,7 +47,7 @@ class Cashback {
     };
 
     try {
-      return await sendTransaction(from, to, contractVersion, method, data);
+      return await signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
     } catch (e) {
       throw Exception("failed to add cashback: $e");
     }
@@ -85,22 +62,24 @@ class Cashback {
     required DateTime expiredAt,
   }) async {
     if (address.isEmpty) throw Exception("address not set");
-    keys.validateEDDSAPublicKey(address);
+    KeyManager.validateEdDSAPublicKey(address);
+    //keys.validateEDDSAPublicKey(address);
 
-    if (tokenAddress.isNotEmpty) keys.validateEDDSAPublicKey(tokenAddress);
+    if (tokenAddress.isNotEmpty) KeyManager.validateEdDSAPublicKey(tokenAddress);//keys.validateEDDSAPublicKey(tokenAddress);
 
     if (programType != "fixed-percentage" && programType != "variable-percentage") {
       throw Exception("invalid programType: $programType");
     }
     if (percentage.isEmpty) throw Exception("percentage not set");
 
-    final from = publicKey;
+    final from = _activePublicKey!;
     if (from.isEmpty) throw Exception("from address not set");
-    keys.validateEDDSAPublicKey(from);
+    KeyManager.validateEdDSAPublicKey(from!);
+    //keys.validateEDDSAPublicKey(from);
 
     final to = address;
-    final contractVersion = cashbackV1.CASHBACK_CONTRACT_V1;
-    final method = cashbackV1.METHOD_UPDATE_CASHBACK;
+    final contractVersion = CASHBACK_CONTRACT_V1;
+    final method = METHOD_UPDATE_CASHBACK;
 
     final data = {
       "address": address,
@@ -111,66 +90,69 @@ class Cashback {
       "token_address": tokenAddress,
     };
 
-    return sendTransaction(from, to, contractVersion, method, data);
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
   Future<ContractOutput> pauseCashback(String address, bool pause) async {
     if (address.isEmpty) throw Exception("address not set");
-    keys.validateEDDSAPublicKey(address);
+    //keys.validateEDDSAPublicKey(address);
+    KeyManager.validateEdDSAPublicKey(address);
     if (!pause) throw Exception("pause must be true: Pause: $pause");
 
-    final from = publicKey;
+    final from = _activePublicKey!;
     if (from.isEmpty) throw Exception("from address not set");
-    keys.validateEDDSAPublicKey(from);
+    
+    KeyManager.validateEdDSAPublicKey(from);
 
     final to = address;
-    final contractVersion = cashbackV1.CASHBACK_CONTRACT_V1;
-    final method = cashbackV1.METHOD_PAUSE_CASHBACK;
+    final contractVersion = CASHBACK_CONTRACT_V1;
+    final method = METHOD_PAUSE_CASHBACK;
 
     final data = {"address": address, "paused": pause};
 
-    return sendTransaction(from, to, contractVersion, method, data);
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
   Future<ContractOutput> unpauseCashback(String address, bool pause) async {
     if (address.isEmpty) throw Exception("address not set");
-    keys.validateEDDSAPublicKey(address);
+    //keys.validateEDDSAPublicKey(address);
+    KeyManager.validateEdDSAPublicKey(address);
     if (pause) throw Exception("pause must be false: Pause: $pause");
 
-    final from = publicKey;
+    final from = _activePrivateKey!;
     if (from.isEmpty) throw Exception("from address not set");
-    keys.validateEDDSAPublicKey(from);
-
+    //keys.validateEDDSAPublicKey(from);
+    KeyManager.validateEdDSAPublicKey(from);
     final to = address;
-    final contractVersion = cashbackV1.CASHBACK_CONTRACT_V1;
-    final method = cashbackV1.METHOD_UNPAUSE_CASHBACK;
+    final contractVersion = CASHBACK_CONTRACT_V1;
+    final method = METHOD_UNPAUSE_CASHBACK;
 
     final data = {"address": address, "paused": pause};
 
-    return sendTransaction(from, to, contractVersion, method, data);
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
   Future<ContractOutput> depositCashbackFunds(
       String address, String tokenAddress, String amount) async {
     if (address.isEmpty) throw Exception("address not set");
-    keys.validateEDDSAPublicKey(address);
-
+    //keys.validateEDDSAPublicKey(address);
+    KeyManager.validateEdDSAPublicKey(address);
     if (amount.isEmpty) throw Exception("amount not set");
     if (tokenAddress.isEmpty) throw Exception("token address not set");
-    keys.validateEDDSAPublicKey(tokenAddress);
-
-    final from = publicKey;
+    //keys.validateEDDSAPublicKey(tokenAddress);
+    KeyManager.validateEdDSAPublicKey(tokenAddress);
+    final from = _activePublicKey!;
     if (from.isEmpty) throw Exception("from address not set");
-    keys.validateEDDSAPublicKey(from);
-
+    //keys.validateEDDSAPublicKey(from);
+    KeyManager.validateEdDSAPublicKey(from);
     final to = address;
-    final contractVersion = cashbackV1.CASHBACK_CONTRACT_V1;
-    final method = cashbackV1.METHOD_DEPOSIT_CASHBACK;
+    final contractVersion = CASHBACK_CONTRACT_V1;
+    final method = METHOD_DEPOSIT_CASHBACK;
 
     final data = {"address": address, "token_address": tokenAddress, "amount": amount};
 
     try {
-      return await sendTransaction(from, to, contractVersion, method, data);
+      return await signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
     } catch (e) {
       throw Exception("failed to deposit cashback: $e");
     }
@@ -179,37 +161,38 @@ class Cashback {
   Future<ContractOutput> withdrawCashbackFunds(
       String address, String tokenAddress, String amount) async {
     if (address.isEmpty) throw Exception("address not set");
-    keys.validateEDDSAPublicKey(address);
-
+    //keys.validateEDDSAPublicKey(address);
+    KeyManager.validateEdDSAPublicKey(address);
     if (amount.isEmpty) throw Exception("amount not set");
     if (tokenAddress.isEmpty) throw Exception("token address not set");
-    keys.validateEDDSAPublicKey(tokenAddress);
-
-    final from = publicKey;
+    //keys.validateEDDSAPublicKey(tokenAddress);
+    KeyManager.validateEdDSAPublicKey(tokenAddress);
+    final from = _activePublicKey!;
     if (from.isEmpty) throw Exception("from address not set");
-    keys.validateEDDSAPublicKey(from);
+    KeyManager.validateEdDSAPublicKey(from);
+    //keys.validateEDDSAPublicKey(from);
 
     final to = address;
-    final contractVersion = cashbackV1.CASHBACK_CONTRACT_V1;
-    final method = cashbackV1.METHOD_WITHDRAW_CASHBACK;
+    final contractVersion = CASHBACK_CONTRACT_V1;
+    final method = METHOD_WITHDRAW_CASHBACK;
 
     final data = {"address": address, "amount": amount, "token_address": tokenAddress};
 
-    return sendTransaction(from, to, contractVersion, method, data);
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
   Future<ContractOutput> getCashback(String address) async {
-    final from = publicKey;
+    final from = _activePublicKey!;
     if (from.isEmpty) throw Exception("from address not set");
     if (address.isEmpty) throw Exception("cashback address must be set");
-    keys.validateEDDSAPublicKey(from);
-    keys.validateEDDSAPublicKey(address);
+    KeyManager.validateEdDSAPublicKey(from);
+    KeyManager.validateEdDSAPublicKey(address);
 
-    final contractVersion = cashbackV1.CASHBACK_CONTRACT_V1;
-    final method = cashbackV1.METHOD_GET_CASHBACK;
+    final contractVersion = CASHBACK_CONTRACT_V1;
+    final method = METHOD_GET_CASHBACK;
     final data = {"address": address};
 
-    return getState(contractVersion, method, data);
+    return getState(contractVersion: contractVersion, method: method, data: data);
   }
 
   Future<ContractOutput> listCashbacks({
@@ -221,12 +204,13 @@ class Cashback {
     required int limit,
     required bool ascending,
   }) async {
-    final from = publicKey;
+    final from = _activePublicKey!;
     if (from.isEmpty) throw Exception("from address not set");
-    keys.validateEDDSAPublicKey(from);
+    KeyManager.validateEdDSAPublicKey(from);
+    //keys.validateEDDSAPublicKey(from);
 
-    if (owner != null && owner.isNotEmpty) keys.validateEDDSAPublicKey(owner);
-    if (tokenAddress != null && tokenAddress.isNotEmpty) keys.validateEDDSAPublicKey(tokenAddress);
+    if (owner != null && owner.isNotEmpty) KeyManager.validateEdDSAPublicKey(owner);//keys.validateEDDSAPublicKey(owner);
+    if (tokenAddress != null && tokenAddress.isNotEmpty) KeyManager.validateEdDSAPublicKey(tokenAddress);//keys.validateEDDSAPublicKey(tokenAddress);
     if (programType != null &&
         programType.isNotEmpty &&
         programType != "fixed-percentage" &&
@@ -236,8 +220,8 @@ class Cashback {
     if (page < 1) throw Exception("page must be greater than 0");
     if (limit < 1) throw Exception("limit must be greater than 0");
 
-    final contractVersion = cashbackV1.CASHBACK_CONTRACT_V1;
-    final method = cashbackV1.METHOD_LIST_CASHBACKS;
+    final contractVersion = CASHBACK_CONTRACT_V1;
+    final method = METHOD_LIST_CASHBACKS;
     final data = {
       "ascending": ascending,
       "limit": limit,
@@ -247,24 +231,26 @@ class Cashback {
       "program_type": programType,
       "token_address": tokenAddress,
     };
-    return getState(contractVersion, method, data);
+    return getState(contractVersion: contractVersion, method: method, data: data);
   }
 
   Future<ContractOutput> claimCashback(String address, String amount) async {
     if (address.isEmpty) throw Exception("address not set");
-    keys.validateEDDSAPublicKey(address);
+    KeyManager.validateEdDSAPublicKey(address);
+    //keys.validateEDDSAPublicKey(address);
     if (amount.isEmpty) throw Exception("amount not set");
 
-    final from = publicKey;
+    final from = _activePublicKey!;
     if (from.isEmpty) throw Exception("from address not set");
-    keys.validateEDDSAPublicKey(from);
+    KeyManager.validateEdDSAPublicKey(from);
+    //keys.validateEDDSAPublicKey(from);
 
     final to = address;
-    final contractVersion = cashbackV1.CASHBACK_CONTRACT_V1;
-    final method = cashbackV1.METHOD_CLAIM_CASHBACK;
+    final contractVersion = CASHBACK_CONTRACT_V1;
+    final method = METHOD_CLAIM_CASHBACK;
 
     final data = {"address": address, "amount": amount};
 
-    return sendTransaction(from, to, contractVersion, method, data);
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 }

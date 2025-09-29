@@ -175,7 +175,9 @@ class _MyAppState extends State<MyApp> {
     final fetchedWallet = domain.Wallet.fromJson(getWalletOutput.toJson());
     print("📥 Wallet fetched: $fetchedWallet");
 
+    final transferWalletOutput = await _twoFinanceBlockchainPlugin.transferWallet(to: publicKey1, amount: '5000');
 
+    print("✅ Wallet transferred: $transferWalletOutput");
     final String baseSymbol = "2F";
     final String suffix = generateRandomSuffix(4); // Implemented below
     final String symbol = "$baseSymbol$suffix";
@@ -279,7 +281,17 @@ class _MyAppState extends State<MyApp> {
       amount: amount,
       decimals: decimals,
     );
-  
+    final responseGetTokenOutPut = domain.Token.fromJson(getTokenOutput.toJson());
+    print("✅ Token minted successfully: $responseGetTokenOutPut");
+
+    final transferOutputToken = await _twoFinanceBlockchainPlugin.transferToken(
+      tokenAddress: responseGetTokenOutPut.address!,
+      transferTo: responseGetTokenOutPut.owner!,
+      amount: '500',
+      decimals: 2,
+    );
+    print("✅ Token transferred successfully: $transferOutputToken");
+
   }
 
  @override

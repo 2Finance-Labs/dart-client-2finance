@@ -1,180 +1,153 @@
-part of 'two_finance_blockchain.dart';
 
-extension Raffle on TwoFinanceBlockchain {
+part of two_finance_blockchain;
+extension RaffleClient on TwoFinanceBlockchain{
 
   Future<ContractOutput> addRaffle({
-    required String address,
-    required String owner,
+    String? raffleAddress,
     required String tokenAddress,
-    required String ticketPrice,
-    required int maxEntries,
-    required int maxEntriesPerUser,
-    required DateTime startAt,
-    required DateTime expiredAt,
-    required bool paused,
-    required String seedCommitHex,
-    required Map<String, String> metadata,
+    required String title,
+    required String description,
+    required String imageUrl,
+    required String payTokenAddress,
+    required String startAmount,
+    required int maxTickets,
+    required int maxTicketsPerWallet,
+    required DateTime endTime,
+    bool paused = false,
   }) async {
+    final from = _activePublicKey!;
+    final to = tokenAddress;
+    final contractVersion = RAFFLE_CONTRACT_V1;
+    final method = METHOD_ADD_RAFFLE;
+    if (_activePublicKey!.isEmpty) throw Exception("public key not set");
+    if (tokenAddress.isEmpty) throw Exception("token address not set");
+    if (payTokenAddress.isEmpty) throw Exception("pay token address not set");
+    if (startAmount.isEmpty) throw Exception("start amount not set");
+
+     KeyManager.validateEdDSAPublicKey(_activePublicKey!);
+     KeyManager.validateEdDSAPublicKey(tokenAddress);
+     KeyManager.validateEdDSAPublicKey(payTokenAddress);
+
     final data = {
-      "address": address,
-      "expired_at": expiredAt.toIso8601String(),
-      "max_entries": maxEntries,
-      "max_entries_per_user": maxEntriesPerUser,
-      "metadata": metadata,
-      "owner": owner,
-      "paused": paused,
-      "seed_commit_hex": seedCommitHex,
-      "start_at": startAt.toIso8601String(),
-      "ticket_price": ticketPrice,
+      "raffle_address": raffleAddress,
       "token_address": tokenAddress,
+      "title": title,
+      "description": description,
+      "image_url": imageUrl,
+      "pay_token_address": payTokenAddress,
+      "start_amount": startAmount,
+      "max_tickets": maxTickets,
+      "max_tickets_per_wallet": maxTicketsPerWallet,
+      "end_time": endTime.toIso8601String(),
+      "paused": paused,
     };
 
-    return sendTransaction(
-      publicKey,
-      "DEPLOY_CONTRACT_ADDRESS",
-      "RAFFLE_CONTRACT_V1",
-      "METHOD_ADD_RAFFLE",
-      data,
-    );
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
   Future<ContractOutput> updateRaffle({
-    required String address,
-    String? tokenAddress,
-    String? ticketPrice,
-    int? maxEntries,
-    int? maxEntriesPerUser,
-    DateTime? startAt,
-    DateTime? expiredAt,
-    String? seedCommitHex,
-    Map<String, String>? metadata,
+    required String raffleAddress,
+    String? title,
+    String? description,
+    String? imageUrl,
+    int? maxTickets,
+    int? maxTicketsPerWallet,
+    DateTime? endTime,
   }) async {
+    final from = _activePublicKey!;
+    final to = raffleAddress;
+    final contractVersion = RAFFLE_CONTRACT_V1;
+    final method = METHOD_UPDATE_RAFFLE;
+    if (to.isEmpty) throw Exception("public key not set");
+    if (raffleAddress.isEmpty) throw Exception("raffle address not set");
+
+     KeyManager.validateEdDSAPublicKey(_activePublicKey!);
+     KeyManager.validateEdDSAPublicKey(raffleAddress);
+
     final data = {
-      "address": address,
-      if (expiredAt != null) "expired_at": expiredAt.toIso8601String(),
-      if (maxEntries != null) "max_entries": maxEntries,
-      if (maxEntriesPerUser != null) "max_entries_per_user": maxEntriesPerUser,
-      if (metadata != null) "metadata": metadata,
-      if (seedCommitHex != null) "seed_commit_hex": seedCommitHex,
-      if (startAt != null) "start_at": startAt.toIso8601String(),
-      if (ticketPrice != null) "ticket_price": ticketPrice,
-      if (tokenAddress != null) "token_address": tokenAddress,
+      "raffle_address": raffleAddress,
+      if (title != null) "title": title,
+      if (description != null) "description": description,
+      if (imageUrl != null) "image_url": imageUrl,
+      if (maxTickets != null) "max_tickets": maxTickets,
+      if (maxTicketsPerWallet != null) "max_tickets_per_wallet": maxTicketsPerWallet,
+      if (endTime != null) "end_time": endTime.toIso8601String(),
     };
 
-    return sendTransaction(
-      publicKey,
-      address,
-      "RAFFLE_CONTRACT_V1",
-      "METHOD_UPDATE_RAFFLE",
-      data,
-    );
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
-  Future<ContractOutput> pauseRaffle(String address) async {
-    final data = {
-      "address": address,
-      "paused": true,
-    };
+  Future<ContractOutput> pauseRaffle(String raffleAddress) async {
+    final from = _activePublicKey!;
+    final to = raffleAddress;
+    final contractVersion = RAFFLE_CONTRACT_V1;
+    final method = METHOD_PAUSE_RAFFLE;
+    if (raffleAddress.isEmpty) throw Exception("raffle address not set");
+     KeyManager.validateEdDSAPublicKey(raffleAddress);
 
-    return sendTransaction(
-      publicKey,
-      address,
-      "RAFFLE_CONTRACT_V1",
-      "METHOD_PAUSE_RAFFLE",
-      data,
-    );
+    final data = {"raffle_address": raffleAddress, "paused": true};
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
-  Future<ContractOutput> unpauseRaffle(String address) async {
-    final data = {
-      "address": address,
-      "paused": false,
-    };
+  Future<ContractOutput> unpauseRaffle(String raffleAddress) async {
+    final from = _activePublicKey!;
+    final to = raffleAddress;
+    final contractVersion = RAFFLE_CONTRACT_V1;
+    final method = METHOD_UNPAUSE_RAFFLE;
+    if (raffleAddress.isEmpty) throw Exception("raffle address not set");
+     KeyManager.validateEdDSAPublicKey(raffleAddress);
 
-    return sendTransaction(
-      publicKey,
-      address,
-      "RAFFLE_CONTRACT_V1",
-      "METHOD_UNPAUSE_RAFFLE",
-      data,
-    );
+    final data = {"raffle_address": raffleAddress, "paused": false};
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
   Future<ContractOutput> enterRaffle({
-    required String address,
-    required int tickets,
+    required String raffleAddress,
     required String payTokenAddress,
+    required int tickets,
   }) async {
+    final from = _activePublicKey!;
+    final to = raffleAddress;
+    final contractVersion = RAFFLE_CONTRACT_V1;
+    final method = METHOD_ENTER_RAFFLE;
+    if (raffleAddress.isEmpty) throw Exception("raffle address not set");
+    if (tickets <= 0) throw Exception("tickets must be greater than 0");
+    if (payTokenAddress.isEmpty) throw Exception("pay token address not set");
+
+     KeyManager.validateEdDSAPublicKey(raffleAddress);
+     KeyManager.validateEdDSAPublicKey(payTokenAddress);
+
     final data = {
-      "address": address,
-      "entrant": publicKey,
+      "raffle_address": raffleAddress,
       "pay_token_address": payTokenAddress,
       "tickets": tickets,
     };
 
-    return sendTransaction(
-      publicKey,
-      address,
-      "RAFFLE_CONTRACT_V1",
-      "METHOD_ENTER_RAFFLE",
-      data,
-    );
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
-  Future<ContractOutput> drawRaffle({
-    required String address,
-    required String revealSeed,
-  }) async {
-    final data = {
-      "address": address,
-      "reveal_seed": revealSeed,
-    };
+  Future<ContractOutput> claimRaffle(String raffleAddress) async {
+    final from = _activePublicKey!;
+    final to = raffleAddress;
+    final contractVersion = RAFFLE_CONTRACT_V1;
+    final method = METHOD_CLAIM_RAFFLE;
+    if (raffleAddress.isEmpty) throw Exception("raffle address not set");
+     KeyManager.validateEdDSAPublicKey(raffleAddress);
 
-    return sendTransaction(
-      publicKey,
-      address,
-      "RAFFLE_CONTRACT_V1",
-      "METHOD_DRAW_RAFFLE",
-      data,
-    );
+    final data = {"raffle_address": raffleAddress};
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
-  Future<ContractOutput> claimRaffle({
-    required String address,
-    required String winner,
-  }) async {
-    final data = {
-      "address": address,
-      "winner": winner,
-    };
+  Future<ContractOutput> withdrawRaffle(String raffleAddress) async {
+    final from = _activePublicKey!;
+    final to = raffleAddress;
+    final contractVersion = RAFFLE_CONTRACT_V1;
+    final method = METHOD_WITHDRAW_RAFFLE;
+    if (raffleAddress.isEmpty) throw Exception("raffle address not set");
+     KeyManager.validateEdDSAPublicKey(raffleAddress);
 
-    return sendTransaction(
-      publicKey,
-      address,
-      "RAFFLE_CONTRACT_V1",
-      "METHOD_CLAIM_RAFFLE",
-      data,
-    );
-  }
-
-  Future<ContractOutput> withdrawRaffle({
-    required String address,
-    required String tokenAddress,
-    required String amount,
-  }) async {
-    final data = {
-      "address": address,
-      "amount": amount,
-      "token_address": tokenAddress,
-    };
-
-    return sendTransaction(
-      publicKey,
-      address,
-      "RAFFLE_CONTRACT_V1",
-      "METHOD_WITHDRAW_RAFFLE",
-      data,
-    );
+    final data = {"raffle_address": raffleAddress};
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data:data);
   }
 
   Future<ContractOutput> addRafflePrize({
@@ -182,74 +155,99 @@ extension Raffle on TwoFinanceBlockchain {
     required String tokenAddress,
     required String amount,
   }) async {
+    final from = _activePublicKey!;
+    final to = raffleAddress;
+    final contractVersion = RAFFLE_CONTRACT_V1;
+    final method = METHOD_ADD_RAFFLE_PRIZE;
+    if (raffleAddress.isEmpty) throw Exception("raffle address not set");
+    if (tokenAddress.isEmpty) throw Exception("token address not set");
+    if (amount.isEmpty) throw Exception("amount not set");
+
+     KeyManager.validateEdDSAPublicKey(raffleAddress);
+     KeyManager.validateEdDSAPublicKey(tokenAddress);
+
     final data = {
-      "amount": amount,
       "raffle_address": raffleAddress,
       "token_address": tokenAddress,
+      "amount": amount,
     };
 
-    return sendTransaction(
-      publicKey,
-      raffleAddress,
-      "RAFFLE_CONTRACT_V1",
-      "METHOD_ADD_RAFFLE_PRIZE",
-      data,
-    );
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
   Future<ContractOutput> removeRafflePrize({
     required String raffleAddress,
-    required String uuid,
+    required String tokenAddress,
   }) async {
+    final from = _activePublicKey!;
+    final to = raffleAddress;
+    final contractVersion = RAFFLE_CONTRACT_V1;
+    final method = METHOD_REMOVE_RAFFLE_PRIZE;
+    if (raffleAddress.isEmpty) throw Exception("raffle address not set");
+    if (tokenAddress.isEmpty) throw Exception("token address not set");
+
+     KeyManager.validateEdDSAPublicKey(raffleAddress);
+     KeyManager.validateEdDSAPublicKey(tokenAddress);
+
     final data = {
       "raffle_address": raffleAddress,
-      "uuid": uuid,
+      "token_address": tokenAddress,
     };
 
-    return sendTransaction(
-      publicKey,
-      raffleAddress,
-      "RAFFLE_CONTRACT_V1",
-      "METHOD_REMOVE_RAFFLE_PRIZE",
-      data,
-    );
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
+    
   }
 
-  Future<ContractOutput> getRaffle(String address) async {
-    final data = {
-      "address": address,
-    };
+  Future<ContractOutput> drawRaffle(String raffleAddress, String seed) async {
+    final from = _activePublicKey!;
+    final to = raffleAddress;
+    final method = METHOD_DRAW_RAFFLE;
+    final contractVersion = RAFFLE_CONTRACT_V1;
+    if (raffleAddress.isEmpty) throw Exception("raffle address not set");
+    if (seed.isEmpty) throw Exception("seed not set");
 
-    return getState(
-      "RAFFLE_CONTRACT_V1",
-      "METHOD_GET_RAFFLE",
-      data,
-    );
+     KeyManager.validateEdDSAPublicKey(raffleAddress);
+
+    final data = {"raffle_address": raffleAddress, "seed": seed};
+    return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
+    
+  }
+
+  Future<ContractOutput> getRaffle(String raffleAddress) async {
+    if (raffleAddress.isEmpty) throw Exception("raffle address not set");
+     KeyManager.validateEdDSAPublicKey(raffleAddress);
+
+    final data = {"raffle_address": raffleAddress};
+    return getState(contractVersion: RAFFLE_CONTRACT_V1, method: METHOD_GET_RAFFLE, data: data);
+    
   }
 
   Future<ContractOutput> listRaffles({
     String? owner,
     String? tokenAddress,
     bool? paused,
-    bool? activeOnly,
-    required int page,
-    required int limit,
-    required bool ascending,
+    bool activeOnly = false,
+    int page = 1,
+    int limit = 10,
+    bool ascending = false,
   }) async {
+     KeyManager.validateEdDSAPublicKey(_activePublicKey!);
+    if (owner != null && owner.isNotEmpty)  KeyManager.validateEdDSAPublicKey(owner);
+    if (tokenAddress != null && tokenAddress.isNotEmpty)  KeyManager.validateEdDSAPublicKey(tokenAddress);
+
     final data = {
-      "ascending": ascending,
-      "limit": limit,
       "owner": owner ?? "",
-      "page": page,
       "token_address": tokenAddress ?? "",
-      if (activeOnly != null) "active_only": activeOnly,
-      if (paused != null) "paused": paused,
+      "paused": paused,
+      "active_only": activeOnly,
+      "page": page,
+      "limit": limit,
+      "ascending": ascending,
     };
 
-    return getState(
-      "RAFFLE_CONTRACT_V1",
-      "METHOD_LIST_RAFFLES",
-      data,
-    );
+    return getState(contractVersion: RAFFLE_CONTRACT_V1, method: METHOD_LIST_RAFFLES, data: data);
+    
   }
+
+  
 }

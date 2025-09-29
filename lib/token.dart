@@ -77,7 +77,7 @@ extension Token on TwoFinanceBlockchain {
 
 
     try {
-      final contractOutput = await sendTransaction(
+      final contractOutput = await signAndSendTransaction(
         from: from,
         to: to,
         contractVersion: contractVersion,
@@ -127,7 +127,7 @@ extension Token on TwoFinanceBlockchain {
     };
 
     try {
-      final contractOutput = await sendTransaction(
+      final contractOutput = await signAndSendTransaction(
         from: from,
         to: to,
         contractVersion: contractVersion,
@@ -174,7 +174,7 @@ Future<ContractOutput> burnToken({
   };
 
   try {
-    final contractOutput = await sendTransaction(
+    final contractOutput = await signAndSendTransaction(
       from: from,
       to: to,
       contractVersion: contractVersion,
@@ -226,7 +226,7 @@ Future<ContractOutput> transferToken({
   };
 
   try {
-    final contractOutput = await sendTransaction(
+    final contractOutput = await signAndSendTransaction(
       from: from,
       to: tokenAddress,
       contractVersion: contractVersion,
@@ -269,7 +269,7 @@ Future<ContractOutput> allowUsers({
   };
 
   try {
-    final contractOutput = await sendTransaction(
+    final contractOutput = await signAndSendTransaction(
       from: from,
       to: tokenAddress,
       contractVersion: contractVersion,
@@ -312,7 +312,7 @@ Future<ContractOutput> disallowUsers({
   };
 
   try {
-    final contractOutput = await sendTransaction(
+    final contractOutput = await signAndSendTransaction(
       from: from,
       to: tokenAddress,
       contractVersion: contractVersion,
@@ -355,7 +355,7 @@ Future<ContractOutput> unblockUsers({
   };
 
   try {
-    final contractOutput = await sendTransaction(
+    final contractOutput = await signAndSendTransaction(
       from: from,
       to: tokenAddress,
       contractVersion: contractVersion,
@@ -390,7 +390,7 @@ Future<ContractOutput> revokeFreezeAuthority({
   };
 
   try {
-    final contractOutput = await sendTransaction(
+    final contractOutput = await signAndSendTransaction(
       from: from,
       to: tokenAddress,
       contractVersion: contractVersion,
@@ -403,12 +403,11 @@ Future<ContractOutput> revokeFreezeAuthority({
   }
 }
 
-Future<ContractOutput> revokeUpdateAuthority(
-  String publicKey,
-  String tokenAddress,
-  bool revoke,
-) async {
-  final from = publicKey;
+Future<ContractOutput> revokeUpdateAuthority({
+    required String tokenAddress,
+    required bool revoke,
+  }) async {
+  final from = _activePublicKey!;
   if (from.isEmpty) {
     throw Exception("from address not set");
   }
@@ -441,7 +440,7 @@ Future<ContractOutput> revokeUpdateAuthority(
   };
 
   try {
-    final contractOutput = await sendTransaction(
+    final contractOutput = await signAndSendTransaction(
       from: from,
       to: tokenAddress,
       contractVersion: contractVersion,
@@ -453,6 +452,45 @@ Future<ContractOutput> revokeUpdateAuthority(
     throw Exception("failed to send transaction: $e");
   }
 }
+
+Future<ContractOutput> revokeMintAuthority({
+  required String tokenAddress,
+  required bool revoke,
+}) async {
+  final from = _activePublicKey ?? "";
+  if (from.isEmpty) {
+    throw Exception("from address not set");
+  }
+  if (tokenAddress.isEmpty) {
+    throw Exception("token address not set");
+  }
+
+  // validações de chave
+  KeyManager.validateEdDSAPublicKey(from);
+  KeyManager.validateEdDSAPublicKey(tokenAddress);
+
+  const contractVersion = TOKEN_CONTRACT_V1;
+  const method = METHOD_REVOKE_MINT_AUTHORITY;
+
+  final data = {
+    "address": tokenAddress,
+    "mint_authority_revoked": revoke,
+  };
+
+  try {
+    final contractOutput = await signAndSendTransaction(
+      from: from,
+      to: tokenAddress,
+      contractVersion: contractVersion,
+      method: method,
+      data: data,
+    );
+    return contractOutput;
+  } catch (e) {
+    throw Exception("failed to send transaction: $e");
+  }
+}
+
 
 Future<ContractOutput> updateMetadata(
   String publicKey,
@@ -543,7 +581,6 @@ Future<ContractOutput> updateMetadata(
     final newTx = Transaction(
       from: from,
       to: tokenAddress,
-      timestamp: timestamp,
       contractVersion: contractVersion,
       method: method,
       data: data,
@@ -553,7 +590,7 @@ Future<ContractOutput> updateMetadata(
     final tx = newTx.get();
     final txSigned = signTransaction( activePrivateKey ?? "", tx);
 
-    final contractOutputBytes = await handlerRequest(
+    final contractOutputBytes = await sendTransaction(
       REQUEST_METHOD_SEND_TRANSACTION,
       txSigned,
       _replyTo,
@@ -588,7 +625,7 @@ Future<ContractOutput> pauseToken({
   };
 
   try {
-    final contractOutput = await sendTransaction(
+    final contractOutput = await signAndSendTransaction(
       from: from,
       to: tokenAddress,
       contractVersion: contractVersion,
@@ -624,7 +661,7 @@ Future<ContractOutput> unpauseToken({
   };
 
   try {
-    final contractOutput = await sendTransaction(
+    final contractOutput = await signAndSendTransaction(
       from: from,
       to: tokenAddress,
       contractVersion: contractVersion,
@@ -660,7 +697,7 @@ Future<ContractOutput> updateFeeTiers({
   };
 
   try {
-    final contractOutput = await sendTransaction(
+    final contractOutput = await signAndSendTransaction(
       from: from,
       to: tokenAddress,
       contractVersion: contractVersion,
@@ -696,7 +733,7 @@ Future<ContractOutput> updateFeeAddress({
   };
 
   try {
-    final contractOutput = await sendTransaction(
+    final contractOutput = await signAndSendTransaction(
       from: from,
       to: tokenAddress,
       contractVersion: contractVersion,

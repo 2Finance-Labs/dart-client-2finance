@@ -1,0 +1,10 @@
+const String PAYMENT_CONTRACT_V1 = "payment_V1";
+const String METHOD_CREATE_PAYMENT = "create_payment";
+const String METHOD_DIRECT_PAY = "direct_pay";
+const String METHOD_AUTHORIZE_PAYMENT = "authorize_pay";
+const String METHOD_REFUND_PAYMENT = "refund_payment";
+const String METHOD_VOID_PAYMENT = "void_payment";
+const String METHOD_PAUSE_PAYMENT = "pause_payment";
+const String METHOD_UNPAUSE_PAYMENT = "unpause_payment";
+const String METHOD_GET_PAYMENT = "get_payment";
+const String METHOD_LIST_PAYMENTS = "list_payments";

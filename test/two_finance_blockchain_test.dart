@@ -6,6 +6,8 @@ import 'package:two_finance_blockchain/two_finance_blockchain_platform_interface
 import 'package:two_finance_blockchain/two_finance_blockchain_method_channel.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
+import 'e2e_test.dart';
+
 class MockTwoFinanceBlockchainPlatform
     with MockPlatformInterfaceMixin
     implements TwoFinanceBlockchainPlatform {
@@ -30,4 +32,7 @@ void main() {
 
     expect(await twoFinanceBlockchainPlugin.getPlatformVersion(), '42');
   });
+
+  
+
 }

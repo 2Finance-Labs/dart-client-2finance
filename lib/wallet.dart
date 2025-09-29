@@ -2,7 +2,7 @@ part of two_finance_blockchain;
 
 
 extension Wallet on TwoFinanceBlockchain {
-  Future<ContractOutput> addWallet(String pubKey) async {
+  Future<ContractOutput> addWallet(String address, String pubKey) async {
     if (pubKey.isEmpty) {
       throw ArgumentError('public key not set');
     }
@@ -17,7 +17,7 @@ extension Wallet on TwoFinanceBlockchain {
     };
 
     try {
-      final contractOutput = await sendTransaction(
+      final contractOutput = await signAndSendTransaction(
         from: from,
         to: to,
         contractVersion: contractVersion,
@@ -64,7 +64,7 @@ extension Wallet on TwoFinanceBlockchain {
   required String amount,
   int decimals = 0,
 }) async {
-  final String from = _activePublicKey ?? '';
+  final from = _activePublicKey!;
   if (from.isEmpty) throw ArgumentError('public key not set');
 
   if (to.isEmpty) throw ArgumentError('to address not set');
@@ -106,7 +106,6 @@ extension Wallet on TwoFinanceBlockchain {
   final newTx = Transaction.create(
     from: from,
     to: to,
-    timestamp: timestamp,
     contractVersion: contractVersion,
     method: method,
     data: data,
@@ -123,7 +122,7 @@ extension Wallet on TwoFinanceBlockchain {
 
   // Envia a transação
   try {
-    await handlerRequest(REQUEST_METHOD_SEND_TRANSACTION, txSigned, _replyTo);
+    await sendTransaction(REQUEST_METHOD_SEND_TRANSACTION, txSigned, _replyTo);
   } catch (e) {
     throw Exception('failed to send transaction: $e');
   }

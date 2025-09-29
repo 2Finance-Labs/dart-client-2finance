@@ -23,12 +23,24 @@ import 'package:two_finance_blockchain/blockchain/utils/decimals.dart';
 import 'package:two_finance_blockchain/infra/event/request_response.dart';
 import 'package:two_finance_blockchain/infra/mqtt/mqtt.dart';
 
+import 'blockchain/contract/raffleV1/constants.dart';
 import 'blockchain/contract/reviewV1/constants.dart';
-
+import 'blockchain/contract/cashbackV1/constants.dart';
+import 'blockchain/contract/paymentV1/constants.dart';
+import 'blockchain/contract/faucetV1/constants.dart';
+import 'blockchain/contract/couponsV1/constants.dart';
+import 'blockchain/contract/member_get_memberV1/constants.dart';
+import 'blockchain/contract/contractV1/constants.dart';
 part 'review.dart';
 part 'token.dart';
 part 'wallet.dart';
 part 'raffle.dart';
+part 'cashback.dart';
+part 'payment.dart';
+part 'faucet.dart';
+part ' coupons.dart';
+part 'member_get_member.dart';
+
 
 class TwoFinanceBlockchain {
   
@@ -43,24 +55,27 @@ class TwoFinanceBlockchain {
 
   Future<void> initialize() async {
     if (_isInitialized) return;
-    initState();
+   // initState();
     _isInitialized = true;
   }
 
-  @override
-  void initState() {
+  void _initState() {
     //super.initState();
     final uuid = Uuid();
     _replyTo = uuid.v4();
 
   }
 
+  
+
   final KeyManager _keyManager;
   final MqttClientWrapper _mqttClient;
 
   TwoFinanceBlockchain({required KeyManager keyManager, required MqttClientWrapper mqttClient})
       : _keyManager = keyManager,
-        _mqttClient = mqttClient;
+        _mqttClient = mqttClient {
+          _initState();
+        }
 
   Future<String?> getPlatformVersion() async {
     final String? version = await _channel.invokeMethod('getPlatformVersion');
@@ -113,7 +128,7 @@ class TwoFinanceBlockchain {
 
     final transactionInput = {'from': publicKey};
 
-    final outputBytes = await handlerRequest(
+    final outputBytes = await sendTransaction(
       REQUEST_METHOD_GET_NONCE,
       transactionInput,
       _replyTo,
@@ -129,7 +144,7 @@ class TwoFinanceBlockchain {
     }
   }
 
-  Future<Uint8List> handlerRequest(String method, dynamic tx, String replyTo) async {
+  Future<Uint8List> sendTransaction(String method, dynamic tx, String replyTo) async {
     final topicBase = TRANSACTIONS_REQUEST_TOPIC.replaceAll('/+', '');
     final requestTopic = "$topicBase/$replyTo";
     final responseTopic = "$TRANSACTIONS_RESPONSE_TOPIC/$replyTo";
@@ -167,7 +182,8 @@ class TwoFinanceBlockchain {
     return Uint8List.fromList(utf8.encode(encodedData));
   }
 
-  Future<ContractOutput> sendTransaction({
+
+  Future<ContractOutput> signAndSendTransaction({
     required String from,
     required String to,
     required String contractVersion,
@@ -189,13 +205,10 @@ class TwoFinanceBlockchain {
 
     nonce++; // Increment nonce
 
-    // Create transaction
-    final timestamp = DateTime.now().toUtc();
     
     final tx = Transaction.create(
       from: from,
       to: to,
-      timestamp: timestamp,
       contractVersion: contractVersion,
       method: method,
       data: data,
@@ -211,7 +224,7 @@ class TwoFinanceBlockchain {
     print('Transaction signed successfully: ${tx}');
     
     // Send to network
-    final responseBytes = await handlerRequest(
+    final responseBytes = await sendTransaction(
       REQUEST_METHOD_SEND_TRANSACTION,
       tx,
       _replyTo!,
@@ -236,7 +249,7 @@ class TwoFinanceBlockchain {
       };
 
       // Make the request (this uses your existing MQTT plugin or handler)
-      final responseBytes = await handlerRequest(
+      final responseBytes = await sendTransaction(
         REQUEST_METHOD_GET_STATE,
         txInput,
         _replyTo!,
@@ -252,6 +265,78 @@ class TwoFinanceBlockchain {
   }
 
 
+ Future<ContractOutput> deployContract(
+      String contractVersion, String contractAddress) async {
+    final from = _activePublicKey!;
+    if (from.isEmpty) {
+      throw Exception('from address is required');
+    }
+    
+    KeyManager.validateEdDSAPublicKey(from);
+    if (contractVersion.isEmpty) {
+      throw Exception('contract version is required');
+    }
+    
+    String to = DEPLOY_CONTRACT_ADDRESS;
+    if (contractAddress.isNotEmpty) {
+      to = contractAddress;
+    }
+    
+    final method = METHOD_DEPLOY_CONTRACT;
+    final data = <String, dynamic>{
+      'contract_version': contractVersion,
+    };
+    
+    try {
+      final contractOutput = await signAndSendTransaction(
+          from: from, to: to, contractVersion: contractVersion, method: method, data: data);
+      return contractOutput;
+    } catch (e) {
+      throw Exception('failed to deploy contract: $e');
+    }
+  }
+
+/*
+Future<ContractOutput> deployContract(
+    String contractVersion,
+    String contractAddress,
+  ) async {
+    final from = _activePublicKey!;
+    print('DEPLOYCONTRACT ADRESS: $from');
+    if (from.isEmpty) {
+      throw Exception("from address is required");
+    } 
+    KeyManager.validateEdDSAPublicKey(from);
+
+    if (contractVersion.isEmpty) {
+      throw Exception("contract version is required");
+    }
+
+    var to = DEPLOY_CONTRACT_ADDRESS;
+    if (contractAddress.isNotEmpty) {
+      to = contractAddress;
+    }
+
+    const method = METHOD_DEPLOY_CONTRACT;
+
+    final data = {
+      "contract_version": contractVersion,
+    };
+
+    try {
+      return await signAndSendTransaction(
+        from: from,
+        to: to,
+        contractVersion: contractVersion,
+        method: method,
+        data: data,
+      );
+    } catch (e) {
+      throw Exception("failed to deploy contract: $e");
+    }
+  }
+  
+  */
   /// Retorna a chave privada ativa.
   String? get activePrivateKey => _activePrivateKey;
 

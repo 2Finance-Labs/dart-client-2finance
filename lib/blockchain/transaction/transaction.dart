@@ -10,7 +10,6 @@ typedef JSONB = Map<String, dynamic>;
 abstract class ITransaction {
   Future<void> validateTransaction();
   Future<void> validate();
-  Future<void> validateTimestamp();
   Future<void> validateHash();
   Future<void> verifySignature();
   Future<String> calculateHash();
@@ -21,7 +20,6 @@ abstract class ITransaction {
 class Transaction implements ITransaction {
   String from;
   String to;
-  DateTime timestamp;
   String contractVersion;
   String method;
   JSONB data;
@@ -33,7 +31,6 @@ class Transaction implements ITransaction {
   Transaction({
     required this.from,
     required this.to,
-    required this.timestamp,
     required this.contractVersion,
     required this.method,
     required this.data,
@@ -49,7 +46,6 @@ class Transaction implements ITransaction {
   Transaction(
     from: $from,
     to: $to,
-    timestamp: $timestamp,
     contractVersion: $contractVersion,
     method: $method,
     data: $data,
@@ -64,7 +60,6 @@ class Transaction implements ITransaction {
   static Transaction create({
     required String from,
     required String to,
-    required DateTime timestamp,
     required String contractVersion,
     required String method,
     required JSONB data,
@@ -73,7 +68,7 @@ class Transaction implements ITransaction {
     return Transaction(
       from: from,
       to: to,
-      timestamp: timestamp.toUtc(),
+      
       contractVersion: contractVersion,
       method: method,
       data: data,
@@ -103,15 +98,6 @@ class Transaction implements ITransaction {
 
     await validateHash();
     await verifySignature();
-  }
-
-  @override
-  Future<void> validateTimestamp() async {
-    final now = DateTime.now().toUtc();
-    final diff = timestamp.difference(now);
-    if (diff.inSeconds.abs() > 10) {
-      throw Exception("timestamp is out of valid ±10s UTC range");
-    }
   }
 
   @override
@@ -162,7 +148,6 @@ class Transaction implements ITransaction {
   Map<String, dynamic> toJson() => {
         'from': from,
         'to': to,
-        'timestamp': timestamp.toIso8601String(),
         'contract_version': contractVersion,
         'method': method,
         'data': data,
@@ -175,7 +160,6 @@ class Transaction implements ITransaction {
   static Transaction fromJson(Map<String, dynamic> json) => Transaction(
         from: json['from'],
         to: json['to'],
-        timestamp: DateTime.parse(json['timestamp']),
         contractVersion: json['contract_version'],
         method: json['method'],
         data: Map<String, dynamic>.from(json['data']),

@@ -51,9 +51,16 @@ class Config {
 
       return;
     }
-
+// EMQX_SCHEME="tcp"
+// EMQX_HOST="k612abc6.ala.us-east-1.emqxsl.com"
+// EMQX_PORT="1883" # Use uma porta padrão para teste, ou 000 como placeholder
+// EMQX_USERNAME="lmenniti"
+// EMQX_PASSWORD="123123123"
+// EMQX_CA_CERT_PATH="../certificates/emqxsl-ca.crt"
+// EMQX_CLIENT_ID="2finance-network"
+//EMQX_SSL=false
     emqxScheme = 'tcp';
-    emqxHost = 'localhost';
+    emqxHost = '127.0.0.1';
     emqxPort = '1883';
     emqxSSL = false;
     emqxUsername = '';
