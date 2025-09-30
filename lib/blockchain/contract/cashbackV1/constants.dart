@@ -1,0 +1,10 @@
+const String CASHBACK_CONTRACT_V1 = "cashback_V1";
+const String METHOD_CLAIM_CASHBACK = "claim_cashback";
+const String METHOD_LIST_CASHBACKS = "list_cashback";
+const String METHOD_GET_CASHBACK = "get_cashback";
+const String METHOD_WITHDRAW_CASHBACK = "withdraw_cashback";
+const String METHOD_DEPOSIT_CASHBACK = "deposit_cashback";
+const String METHOD_UNPAUSE_CASHBACK = "unpause_cashback";
+const String METHOD_PAUSE_CASHBACK = "pause_cashback";
+const String METHOD_UPDATE_CASHBACK = "update_cashback";
+const String METHOD_ADD_CASHBACK = "add_cashback";

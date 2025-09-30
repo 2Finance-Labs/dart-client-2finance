@@ -13,6 +13,10 @@ import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/blockchain/transaction/transaction.dart';
 import 'package:two_finance_blockchain/blockchain/types/types.dart';
 import 'package:two_finance_blockchain/blockchain/contract/walletV1/constants.dart';
+import 'package:two_finance_blockchain/blockchain/contract/tokenV1/domain/token.dart' as domain;
+
+import 'package:two_finance_blockchain/blockchain/contract/walletV1/domain/wallet.dart' as domain;
+
 
 void main() {
   runApp(const MyApp());
@@ -145,12 +149,35 @@ class _MyAppState extends State<MyApp> {
     print('Public Key: $publicKey1');
     print('Receiver Public Key: $publicKey2');
     
+    // --- WALLET EXAMPLE ---
     final contractOutput = await _twoFinanceBlockchainPlugin.addWallet(publicKey1);
-    print(contractOutput);
+    print(contractOutput.states);
+
+
+    final json = contractOutput.toJson();
+    print('Contract Output JSON: $json');
+    final walletJson = (json['states'] as List)
+    .map((e) => e as Map<String, dynamic>)
+    .firstWhere((s) => s['type'] == 'wallet')['object'] as Map<String, dynamic>;
+    print('Wallet JSON: $walletJson');
+
+    // Parse into your Wallet model
+    final wallet = domain.Wallet.fromJson(walletJson);
+    print('✅ Parsed wallet: $wallet');
+    // Parse into your Wallet model
+    //final wallet = models.Wallet.fromJson(walletJson);
+    //print('✅ Parsed wallet: $wallet');
+
+    //final wallet1 = wallet.Wallet.fromJson(contractOutput.toJson());
+    //print("✅ Wallet created: $wallet1");
+
     final getWalletOutput = await _twoFinanceBlockchainPlugin.getWallet(publicKey1);
-    print(getWalletOutput);
+    final fetchedWallet = domain.Wallet.fromJson(getWalletOutput.toJson());
+    print("📥 Wallet fetched: $fetchedWallet");
 
+    final transferWalletOutput = await _twoFinanceBlockchainPlugin.transferWallet(to: publicKey1, amount: '5000');
 
+    print("✅ Wallet transferred: $transferWalletOutput");
     final String baseSymbol = "2F";
     final String suffix = generateRandomSuffix(4); // Implemented below
     final String symbol = "$baseSymbol$suffix";
@@ -216,37 +243,54 @@ class _MyAppState extends State<MyApp> {
 
     final DateTime expiredAt = DateTime.now().toUtc().add(const Duration(days: 30));
 
-    try {
-      final contractOutput = await _twoFinanceBlockchainPlugin.addToken(
-        symbol: symbol,
-        name: name,
-        decimals: decimals,
-        totalSupply: totalSupply,
-        description: description,
-        owner: owner,
-        image: image,
-        website: website,
-        tagsSocialMedia: tagsSocialMedia,
-        tagsCategory: tagsCategory,
-        tags: tags,
-        creator: creator,
-        creatorWebsite: creatorWebsite,
-        allowUsers: allowUsers,
-        blockUsers: blockUsers,
-        feeTiersList: feeTiersList,
-        feeAddress: feeAddress,
-        freezeAuthorityRevoked: freezeAuthorityRevoked,
-        mintAuthorityRevoked: mintAuthorityRevoked,
-        updateAuthorityRevoked: updateAuthorityRevoked,
-        paused: paused,
-        expiredAt: expiredAt,
-      );
+    final contractOutputToken = await _twoFinanceBlockchainPlugin.addToken(
+      symbol: symbol,
+      name: name,
+      decimals: decimals,
+      totalSupply: totalSupply,
+      description: description,
+      owner: owner,
+      image: image,
+      website: website,
+      tagsSocialMedia: tagsSocialMedia,
+      tagsCategory: tagsCategory,
+      tags: tags,
+      creator: creator,
+      creatorWebsite: creatorWebsite,
+      allowUsers: allowUsers,
+      blockUsers: blockUsers,
+      feeTiersList: feeTiersList,
+      feeAddress: feeAddress,
+      freezeAuthorityRevoked: freezeAuthorityRevoked,
+      mintAuthorityRevoked: mintAuthorityRevoked,
+      updateAuthorityRevoked: updateAuthorityRevoked,
+      paused: paused,
+      expiredAt: expiredAt,
+    );
 
-      print("✅ Token created successfully: ${contractOutput.toJson()}");
-    } catch (e) {
-      print("❌ Error adding token: $e");
-    }
+    // Parse into the Token model
+    final token1 = domain.Token.fromJson(contractOutputToken.toJson());
+    print("✅ Token created successfully: $token1");
+    
+    final String to = "43b23ffdd134ff73eda6cad0a5bd0d97877dd63ab8ba21ffe49d80fe51fd5dec";
+    final String amount = "1000000"; // 1 token with 3 decimals
 
+    final getTokenOutput = await _twoFinanceBlockchainPlugin.mintToken(
+      to: to,
+      mintTo: publicKey2,
+      amount: amount,
+      decimals: decimals,
+    );
+    final responseGetTokenOutPut = domain.Token.fromJson(getTokenOutput.toJson());
+    print("✅ Token minted successfully: $responseGetTokenOutPut");
+
+    final transferOutputToken = await _twoFinanceBlockchainPlugin.transferToken(
+      tokenAddress: responseGetTokenOutPut.address!,
+      transferTo: responseGetTokenOutPut.owner!,
+      amount: '500',
+      decimals: 2,
+    );
+    print("✅ Token transferred successfully: $transferOutputToken");
 
   }
 
