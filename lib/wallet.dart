@@ -7,7 +7,7 @@ extension Wallet on TwoFinanceBlockchain {
       throw ArgumentError('public key not set');
     }
     final from = pubKey;
-    const String to = DEPLOY_CONTRACT_ADDRESS;
+    final String to = address;
     const String contractVersion = WALLET_CONTRACT_V1;
     const String method = METHOD_ADD_WALLET;
 

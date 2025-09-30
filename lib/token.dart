@@ -3,6 +3,7 @@ part of 'two_finance_blockchain.dart';
 extension Token on TwoFinanceBlockchain {
 
   Future<ContractOutput> addToken({
+    required String address,
     required String symbol,
     required String name,
     required int decimals,
@@ -27,6 +28,7 @@ extension Token on TwoFinanceBlockchain {
     required DateTime expiredAt,
   }) async {
     // Validate required fields
+    if (address.isEmpty) throw ArgumentError('address not set');
     if (symbol.isEmpty) throw ArgumentError('symbol not set');
     if (name.isEmpty) throw ArgumentError('name not set');
     if (totalSupply.isEmpty) throw ArgumentError('total supply not set');
@@ -46,11 +48,12 @@ extension Token on TwoFinanceBlockchain {
     if (from.isEmpty) throw ArgumentError('from address not set');
     KeyManager.validateEdDSAPublicKey(from);
 
-    const String to = DEPLOY_CONTRACT_ADDRESS;
+    final String to = address;
     const String contractVersion = TOKEN_CONTRACT_V1;
     const String method = METHOD_ADD_TOKEN;
 
     final Map<String, dynamic> data = {
+      "address": address,
       "allow_users": allowUsers,
       "block_users": blockUsers,
       "creator": creator,
@@ -91,20 +94,20 @@ extension Token on TwoFinanceBlockchain {
   }
 
   Future<ContractOutput> mintToken({
-    required String to,         // Token contract address
+    required String tokenAddress,         // Token contract address
     required String mintTo,     // Recipient address
     required String amount,
     required int decimals,
   }) async {
     final String from = _activePublicKey!;
     if (from.isEmpty) throw ArgumentError('from address not set');
-    if (to.isEmpty) throw ArgumentError('token address not set');
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
     if (mintTo.isEmpty) throw ArgumentError('mint to address not set');
     if (amount.isEmpty) throw ArgumentError('amount not set');
 
     // Validate keys
     KeyManager.validateEdDSAPublicKey(from);
-    KeyManager.validateEdDSAPublicKey(to);
+    KeyManager.validateEdDSAPublicKey(tokenAddress);
     KeyManager.validateEdDSAPublicKey(mintTo);
 
     // Convert amount if decimals > 0
@@ -119,7 +122,7 @@ extension Token on TwoFinanceBlockchain {
 
     const String contractVersion = TOKEN_CONTRACT_V1;
     const String method = METHOD_MINT_TOKEN;
-
+    final String to = tokenAddress;
     final Map<String, dynamic> data = {
       "amount": finalAmount,
       "mint_to": mintTo,
@@ -141,18 +144,18 @@ extension Token on TwoFinanceBlockchain {
   }
 
 Future<ContractOutput> burnToken({
-  required String to,       // Token contract address
+  required String tokenAddress,       // Token contract address
   required String amount,
   required int decimals,
 }) async {
   final String from = _activePublicKey!;
   if (from.isEmpty) throw ArgumentError('from address not set');
-  if (to.isEmpty) throw ArgumentError('token address not set');
+  if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
   if (amount.isEmpty) throw ArgumentError('amount not set');
 
   // Validate keys
   KeyManager.validateEdDSAPublicKey(from);
-  KeyManager.validateEdDSAPublicKey(to);
+  KeyManager.validateEdDSAPublicKey(tokenAddress);
 
   // Convert amount if decimals > 0
   String finalAmount = amount;
@@ -163,14 +166,14 @@ Future<ContractOutput> burnToken({
       throw Exception('failed to convert amount to target decimals: $e');
     }
   }
-
+  final String to = tokenAddress;
   const String contractVersion = TOKEN_CONTRACT_V1;
   const String method = METHOD_BURN_TOKEN;
 
   // Ordem alfabética das chaves
   final Map<String, dynamic> data = {
     "amount": finalAmount,
-    "token_address": to,
+    "token_address": tokenAddress,
   };
 
   try {
@@ -309,6 +312,50 @@ Future<ContractOutput> disallowUsers({
   final Map<String, dynamic> data = {
     "address": tokenAddress,
     "allow_users": users,
+  };
+
+  try {
+    final contractOutput = await signAndSendTransaction(
+      from: from,
+      to: tokenAddress,
+      contractVersion: contractVersion,
+      method: method,
+      data: data,
+    );
+    return contractOutput;
+  } catch (e) {
+    throw Exception('failed to send transaction: $e');
+  }
+}
+
+
+Future<ContractOutput> blockUsers({
+  required String tokenAddress,
+  required Map<String, bool> users,
+}) async {
+  final String from = _activePublicKey!;
+  if (from.isEmpty) throw ArgumentError('from address not set');
+  if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+  if (users.isEmpty) throw ArgumentError('users map is empty');
+
+  // Validate keys
+  KeyManager.validateEdDSAPublicKey(from);
+  KeyManager.validateEdDSAPublicKey(tokenAddress);
+
+  // Validate users map
+  try {
+    validateUserMap(users, 'block users');
+  } catch (e) {
+    throw Exception('invalid block users: $e');
+  }
+
+  const String contractVersion = TOKEN_CONTRACT_V1;
+  const String method = METHOD_BLOCK_USERS;
+
+  // Ordem alfabética das chaves
+  final Map<String, dynamic> data = {
+    "address": tokenAddress,
+    "block_users": users,
   };
 
   try {
@@ -574,28 +621,14 @@ Future<ContractOutput> updateMetadata(
   };
 
   try {
-    var nonce = await getNonce(from);
-    nonce += 1;
-
-    final newTx = Transaction(
+    final contractOutput = await signAndSendTransaction(
       from: from,
       to: tokenAddress,
       contractVersion: contractVersion,
       method: method,
       data: data,
-      nonce: nonce,
     );
-
-    final tx = newTx.get();
-    final txSigned = signTransaction( activePrivateKey ?? "", tx);
-
-    final contractOutputBytes = await sendTransaction(
-      REQUEST_METHOD_SEND_TRANSACTION,
-      txSigned,
-      _replyTo,
-    ) as String;
-
-    return ContractOutput.fromJson(jsonDecode(contractOutputBytes));
+    return contractOutput;
   } catch (e) {
     throw Exception("failed to send transaction: $e");
   }
@@ -781,7 +814,7 @@ Future<ContractOutput> getToken({
     );
     return contractOutput;
   } catch (e) {
-    throw Exception('failed to get state: $e');
+    throw Exception('failed to get state: on get token $e');
   }
 }
 
@@ -824,7 +857,7 @@ Future<ContractOutput> listTokens({
     );
     return contractOutput;
   } catch (e) {
-    throw Exception('failed to get state: $e');
+    throw Exception('failed to get state on list tokens: $e');
   }
 }
 

@@ -3,16 +3,16 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:two_finance_blockchain/blockchain/contract/contractV1/models/model.dart';
 import 'package:two_finance_blockchain/blockchain/contract/walletV1/constants.dart';
+import 'package:two_finance_blockchain/blockchain/contract/walletV1/models/wallet.dart';
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/blockchain/types/types.dart';
-import 'package:two_finance_blockchain/models/wallet.dart';
-import 'package:two_finance_blockchain/models/wallet.dart' as domainwallet;
 import 'package:two_finance_blockchain/two_finance_blockchain.dart';
 
 import 'e2e_test.dart';
 
-void main() {
-  
+void main() async {
+
+ final c = await setupClient();
 
  test("Teste genKey", () async {
     final keyManager = KeyManager();
@@ -21,7 +21,6 @@ void main() {
     expect(priv.isNotEmpty, true);
   });
  test("Teste createWallet", () async {  
-    final c = await setupClient();
     expect(c, isA<TwoFinanceBlockchain>());
     
     final (w, priv) = await createWallet(c);
@@ -29,44 +28,67 @@ void main() {
     expect(priv.isNotEmpty, true);
   });
 
+  test("Test get wallet", () async {
+    expect(c, isA<TwoFinanceBlockchain>());
+
+    final (w, priv) = await createWallet(c);
+    expect(w.publicKey.isNotEmpty, true);
+    expect(priv.isNotEmpty, true);
+
+    final w2Out = await c.getWallet(w.publicKey ?? '');
+    final w2States = w2Out.states;
+    if (w2States == null || w2States.isEmpty) {
+      throw Exception("GetWallet failed: no states returned");
+    }
+
+    // Decode wallet domain state
+    final w2 = unmarshalState(
+      w2States[0].object,
+      (json) => WalletStateModel.fromJson(json),
+    );
+    expect(w2.publicKey, w.publicKey);
+  });
 
 
   // Add wallet tests here
 }
 
-Future<(domainwallet.Wallet, String)> createWallet(TwoFinanceBlockchain c) async {
-  // Gera par de chaves
+Future<(WalletStateModel, String)> createWallet(TwoFinanceBlockchain c) async {
+  // 1) Generate keys & set signer
   final (pub, priv) = await genKey(KeyManager());
   await c.setPrivateKey(priv);
-  
-  final contrModel = ContractStateModel(address: pub, contractVersion: WALLET_CONTRACT_V1, createdAt: DateTime.now());
-  
-  // Deploy do contrato
-  final deployedContract = await c.deployContract(WALLET_CONTRACT_V1, "");
-  if (deployedContract.states == null) {
+
+  // 2) Deploy contract
+  final deployed = await c.deployContract(WALLET_CONTRACT_V1, "");
+  final states = deployed.states;
+  if (states == null || states.isEmpty) {
     throw Exception("DeployContract failed: no states returned");
   }
 
-  // Desserializa o estado do contrato
-  unmarshalState(
-    deployedContract.states![0].object,
+  // 3) Decode contract state and keep it in a variable
+  final contrModel = unmarshalState(
+    states[0].object,
     (json) => ContractStateModel.fromJson(json),
   );
-  unmarshalState(contrModel, (json) => ContractStateModel.fromJson(json));
+  if (contrModel.address.isEmpty) {
+    throw Exception("DeployContract failed: empty contract address in state");
+  }
 
-  // Adiciona a wallet
+  // 4) Add wallet to that deployed contract
   final wOut = await c.addWallet(contrModel.address, pub);
-  if (wOut.states == null || wOut.states!.isEmpty) {
+  final wStates = wOut.states;
+  if (wStates == null || wStates.isEmpty) {
     throw Exception("AddWallet failed: no states returned");
   }
 
+  // 5) Decode wallet domain state
   final w = unmarshalState(
-    wOut.states![0].object,
-    (json) => domainwallet.Wallet.fromJson(json),
+    wStates[0].object,
+    (json) => WalletStateModel.fromJson(json),
   );
 
-  if (w.publicKey.isEmpty) {
-    throw Exception("wallet public key empty");
+  if ((w.publicKey ?? '').isEmpty) {
+    throw Exception("Wallet public key is empty");
   }
 
   return (w, priv);

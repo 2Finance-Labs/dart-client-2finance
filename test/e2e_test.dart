@@ -16,8 +16,6 @@ import 'package:two_finance_blockchain/two_finance_blockchain.dart';
 
 void main() {
   test('SetupClient', () async{
-
-    
     expect(await setupClient(), isA<TwoFinanceBlockchain>());
   });
 
@@ -113,10 +111,18 @@ String hexEncode(Uint8List bytes) {
 }
 
 // unmarshalState decodes an arbitrary state object into a typed struct.
-T unmarshalState<T>(dynamic obj, T Function(Map<String, dynamic>) fromJson) {
-  final encoded = jsonEncode(obj);
-  final decoded = jsonDecode(encoded) as Map<String, dynamic>;
-  return fromJson(decoded);
+T unmarshalState<T>(
+  Object? obj,
+  T Function(Map<String, dynamic>) fromJson,
+) {
+  if (obj is Map<String, dynamic>) {
+    return fromJson(obj);
+  }
+  if (obj is String) {
+    final decoded = jsonDecode(obj);
+    if (decoded is Map<String, dynamic>) return fromJson(decoded);
+  }
+  throw Exception('unmarshalState: unsupported state object type: ${obj.runtimeType}');
 }
 
 // amt builds integer string respecting decimals (unscaled * 10^decimals)

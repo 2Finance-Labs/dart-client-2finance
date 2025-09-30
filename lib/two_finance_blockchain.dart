@@ -14,7 +14,7 @@ import 'package:uuid/uuid.dart';
 
 import 'package:two_finance_blockchain/blockchain/contract/constants.dart';
 import 'package:two_finance_blockchain/blockchain/contract/tokenV1/constants.dart';
-import 'package:two_finance_blockchain/blockchain/contract/tokenV1/domain/token.dart';
+import 'package:two_finance_blockchain/blockchain/contract/tokenV1/models/token.dart';
 import 'package:two_finance_blockchain/blockchain/contract/walletV1/constants.dart';
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/blockchain/transaction/transaction.dart';
@@ -38,7 +38,7 @@ part 'raffle.dart';
 part 'cashback.dart';
 part 'payment.dart';
 part 'faucet.dart';
-part ' coupons.dart';
+part 'coupons.dart';
 part 'member_get_member.dart';
 
 
@@ -65,8 +65,6 @@ class TwoFinanceBlockchain {
     _replyTo = uuid.v4();
 
   }
-
-  
 
   final KeyManager _keyManager;
   final MqttClientWrapper _mqttClient;
@@ -220,9 +218,7 @@ class TwoFinanceBlockchain {
       throw Exception("Active private key is not initialized");
     }
     final tx = newTx.get();
-    print('Signing transaction: ${tx}');
     final txSigned = await signTransaction( activePrivateKey ?? "", tx);
-    print("txSigned: $txSigned");
     // Send to network
     final responseBytes = await sendTransaction(
       REQUEST_METHOD_SEND_TRANSACTION,
@@ -260,7 +256,7 @@ class TwoFinanceBlockchain {
 
       return ContractOutput.fromJson(contractOutputJson);
     } catch (e) {
-      throw Exception('failed to get state: $e');
+      throw Exception('failed to get state: from getState function $e');
     }
   }
 
@@ -297,47 +293,6 @@ class TwoFinanceBlockchain {
     }
   }
 
-/*
-Future<ContractOutput> deployContract(
-    String contractVersion,
-    String contractAddress,
-  ) async {
-    final from = _activePublicKey!;
-    print('DEPLOYCONTRACT ADRESS: $from');
-    if (from.isEmpty) {
-      throw Exception("from address is required");
-    } 
-    KeyManager.validateEdDSAPublicKey(from);
-
-    if (contractVersion.isEmpty) {
-      throw Exception("contract version is required");
-    }
-
-    var to = DEPLOY_CONTRACT_ADDRESS;
-    if (contractAddress.isNotEmpty) {
-      to = contractAddress;
-    }
-
-    const method = METHOD_DEPLOY_CONTRACT;
-
-    final data = {
-      "contract_version": contractVersion,
-    };
-
-    try {
-      return await signAndSendTransaction(
-        from: from,
-        to: to,
-        contractVersion: contractVersion,
-        method: method,
-        data: data,
-      );
-    } catch (e) {
-      throw Exception("failed to deploy contract: $e");
-    }
-  }
-  
-  */
   /// Retorna a chave privada ativa.
   String? get activePrivateKey => _activePrivateKey;
 
