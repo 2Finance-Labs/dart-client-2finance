@@ -91,8 +91,6 @@ extension Wallet on TwoFinanceBlockchain {
     "to": to,
   };
 
-  final DateTime timestamp = DateTime.now().toUtc();
-
   // Recupera nonce e incrementa
   int nonce;
   try {

@@ -39,10 +39,10 @@ Future<(domainwallet.Wallet, String)> createWallet(TwoFinanceBlockchain c) async
   final (pub, priv) = await genKey(KeyManager());
   await c.setPrivateKey(priv);
   
-  final contrModel = ContractStateModel(address: pub, contractVersion: "WALLET_CONTRACT_V1", createdAt: DateTime.now());
+  final contrModel = ContractStateModel(address: pub, contractVersion: WALLET_CONTRACT_V1, createdAt: DateTime.now());
   
   // Deploy do contrato
-  final deployedContract = await c.deployContract("WALLET_CONTRACT_V1", "");
+  final deployedContract = await c.deployContract(WALLET_CONTRACT_V1, "");
   if (deployedContract.states == null) {
     throw Exception("DeployContract failed: no states returned");
   }

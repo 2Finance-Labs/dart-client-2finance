@@ -206,7 +206,7 @@ class TwoFinanceBlockchain {
     nonce++; // Increment nonce
 
     
-    final tx = Transaction.create(
+    final newTx = Transaction.create(
       from: from,
       to: to,
       contractVersion: contractVersion,
@@ -219,14 +219,14 @@ class TwoFinanceBlockchain {
     if (privateKey == null) {
       throw Exception("Active private key is not initialized");
     }
-
-    await signTransaction(privateKey, tx);
-    print('Transaction signed successfully: ${tx}');
-    
+    final tx = newTx.get();
+    print('Signing transaction: ${tx}');
+    final txSigned = await signTransaction( activePrivateKey ?? "", tx);
+    print("txSigned: $txSigned");
     // Send to network
     final responseBytes = await sendTransaction(
       REQUEST_METHOD_SEND_TRANSACTION,
-      tx,
+      txSigned,
       _replyTo!,
     );
 
@@ -267,6 +267,7 @@ class TwoFinanceBlockchain {
 
  Future<ContractOutput> deployContract(
       String contractVersion, String contractAddress) async {
+        print("Deploying contract version: $contractVersion to address: $contractAddress");
     final from = _activePublicKey!;
     if (from.isEmpty) {
       throw Exception('from address is required');

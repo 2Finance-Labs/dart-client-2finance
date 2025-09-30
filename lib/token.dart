@@ -574,7 +574,6 @@ Future<ContractOutput> updateMetadata(
   };
 
   try {
-    final timestamp = DateTime.now().toUtc();
     var nonce = await getNonce(from);
     nonce += 1;
 
