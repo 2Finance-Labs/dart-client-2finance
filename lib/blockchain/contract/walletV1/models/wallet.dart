@@ -1,19 +1,19 @@
 //wallet.go
-class Wallet {
+class WalletStateModel {
   final String publicKey;
   final String amount;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
-  Wallet({
+  WalletStateModel({
     required this.publicKey,
     required this.amount,
     this.createdAt,
     this.updatedAt,
   });
 
-  factory Wallet.fromJson(Map<String, dynamic> json) {
-    return Wallet(
+  factory WalletStateModel.fromJson(Map<String, dynamic> json) {
+    return WalletStateModel(
       publicKey: json['public_key'] as String,
       amount: json['amount'] as String,
       createdAt: json['created_at'] != null

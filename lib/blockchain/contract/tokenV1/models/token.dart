@@ -11,9 +11,7 @@ for (final entry in users.entries) {
     }
 }
 }
-
-
-class Token {
+class TokenStateModel {
   final String? symbol;
   final String? name;
   final int? decimals;
@@ -23,7 +21,7 @@ class Token {
   final String? address;
   final String? hash;
   final String? owner;
-  //final List<FeeTier>? feeTiersList;
+  final List<FeeTier>? feeTiersList;
   final String? feeAddress;
 
   // Metadata fields
@@ -51,13 +49,13 @@ class Token {
   final bool? paused;
   final DateTime? expiredAt;
 
-  Token({
+  TokenStateModel({
+    this.address,
     this.symbol,
     this.name,
     this.decimals,
     this.totalSupply,
     this.description,
-    this.address,
     this.hash,
     this.owner,
     this.feeTiersList,
@@ -78,8 +76,8 @@ class Token {
     this.expiredAt,
   });
 
-  factory Token.fromJson(Map<String, dynamic> json) {
-    return Token(
+  factory TokenStateModel.fromJson(Map<String, dynamic> json) {
+    return TokenStateModel(
       symbol: json['symbol'] as String?,
       name: json['name'] as String?,
       decimals: json['decimals'] as int?,
