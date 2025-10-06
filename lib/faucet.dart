@@ -206,7 +206,7 @@ extension Faucet on TwoFinanceBlockchain {
 
     final to = address;
     const contractVersion = FAUCET_CONTRACT_V1;
-    const method = METHOD_UPDATE_REQUEST_LIMIT_PER_USER;
+    const method = METHOD_REQUEST_LIMIT_PER_USER;
 
     final data = {
       "address": address,

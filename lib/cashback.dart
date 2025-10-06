@@ -6,6 +6,17 @@ extension Cashback on TwoFinanceBlockchain{
   /// Substitua com sua implementação real
 
   Future<ContractOutput> addCashback({
+    /*
+    address string,
+	owner string,
+	tokenAddress string,
+	programType string,  // "fixed-percentage" | "variable-percentage"
+	percentage string,   // string-encoded number
+	startAt time.Time,
+	expiredAt time.Time,
+	paused bool,
+    */
+    required String address,
     required String owner,
     required String tokenAddress,
     required String programType,

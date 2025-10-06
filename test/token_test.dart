@@ -275,6 +275,8 @@ void main() async {
         //     await c.listTokenBalances(tokenAddress: tokenAddr, page: 1, limit: 50);
         // expect(listBalByToken.states != null && listBalByToken.states!.isNotEmpty, true);
     });
+
+
 }
 
 /// Cria um token completo e retorna (estadoDoToken, privateKeyDoDono).

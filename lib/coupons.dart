@@ -2,7 +2,7 @@ part of 'two_finance_blockchain.dart';
 
 extension CouponClient on TwoFinanceBlockchain {
 
-  Future<types.ContractOutput> AddCoupon(
+  Future<types.ContractOutput> addCoupon(
     String address,
     String tokenAddress,
     String programType,
@@ -58,7 +58,7 @@ extension CouponClient on TwoFinanceBlockchain {
     return await signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
-  Future<types.ContractOutput> UpdateCoupon(
+  Future<types.ContractOutput> updateCoupon(
     String address,
     String tokenAddress,
     String programType,
@@ -107,7 +107,7 @@ extension CouponClient on TwoFinanceBlockchain {
     return await signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
-  Future<types.ContractOutput> PauseCoupon(String address, bool pause) async {
+  Future<types.ContractOutput> pauseCoupon(String address, bool pause) async {
     final from = _activePublicKey!;
     final to = address;
     final contractVersion = COUPON_CONTRACT_V1;
@@ -123,7 +123,7 @@ extension CouponClient on TwoFinanceBlockchain {
     return await signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
-  Future<types.ContractOutput> UnpauseCoupon(String address, bool pause) async {
+  Future<types.ContractOutput> unpauseCoupon(String address, bool pause) async {
     final from = _activePublicKey!;
     final to = address;
     final contractVersion = COUPON_CONTRACT_V1;
@@ -138,7 +138,7 @@ extension CouponClient on TwoFinanceBlockchain {
     return await signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
-  Future<types.ContractOutput> RedeemCoupon(
+  Future<types.ContractOutput> redeemCoupon(
     String address,
     String orderAmount,
     String passcode,
@@ -165,7 +165,7 @@ extension CouponClient on TwoFinanceBlockchain {
     return await signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data: data);
   }
 
-  Future<types.ContractOutput> GetCoupon(String address) async {
+  Future<types.ContractOutput> getCoupon(String address) async {
     final from = _activePublicKey!;
     if (from.isEmpty) throw Exception("from address not set");
     KeyManager.validateEdDSAPublicKey(from);
@@ -179,7 +179,7 @@ extension CouponClient on TwoFinanceBlockchain {
     return await getState(contractVersion: contractVersion, method: method, data: data);
   }
 
-  Future<types.ContractOutput> ListCoupons(
+  Future<types.ContractOutput> listCoupons(
     String owner,
     String tokenAddress,
     String programType,
