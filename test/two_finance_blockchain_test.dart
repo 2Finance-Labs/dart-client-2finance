@@ -33,7 +33,4 @@ void main() {
 
     expect(await twoFinanceBlockchainPlugin.getPlatformVersion(), '42');
   });
-
-  
-
 }
