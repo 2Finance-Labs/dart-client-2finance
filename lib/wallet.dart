@@ -6,23 +6,26 @@ extension Wallet on TwoFinanceBlockchain {
     if (pubKey.isEmpty) {
       throw ArgumentError('public key not set');
     }
+    final chainID = _chainID;
     final from = pubKey;
     final String to = address;
-    const String contractVersion = WALLET_CONTRACT_V1;
     const String method = METHOD_ADD_WALLET;
-
-    final data = {
-      "amount": "0",
-      "public_key": pubKey,
-    };
+    const int version = 1;
+    final String uuid7 = newUUID7();
+    
+    final data = mapToJsonRawMessage({
+      'public_key': pubKey,
+    });
 
     try {
       final contractOutput = await signAndSendTransaction(
+        chainID: chainID,
         from: from,
         to: to,
-        contractVersion: contractVersion,
         method: method,
         data: data,
+        version: version,
+        uuid7: uuid7
       );
       return contractOutput;
     } catch (e) {
@@ -36,20 +39,19 @@ extension Wallet on TwoFinanceBlockchain {
     }
 
     try {
-      KeyManager.validateEdDSAPublicKey(pubKey);
+      KeyManager.validateEDDSAPublicKeyHex(pubKey);
     } catch (e) {
       throw ArgumentError('invalid public key: $e');
     }
 
-    const String contractVersion = WALLET_CONTRACT_V1;
     const String method = METHOD_GET_WALLET_BY_PUBLIC_KEY;
-    final Map<String, dynamic> data = {
+    final JsonRawMessage data = mapToJsonRawMessage({
       'public_key': pubKey,
-    };
+    });
 
     try {
       final contractOutput = await getState(
-        contractVersion: contractVersion,
+        to: pubKey,
         method: method,
         data: data,
       );
@@ -64,12 +66,12 @@ extension Wallet on TwoFinanceBlockchain {
   required String amount,
   int decimals = 0,
 }) async {
-  final from = _activePublicKey!;
+  final from = _publicKeyHex!;
   if (from.isEmpty) throw ArgumentError('public key not set');
 
   if (to.isEmpty) throw ArgumentError('to address not set');
   if (to == from) throw ArgumentError('cannot transfer to the same address');
-  KeyManager.validateEdDSAPublicKey(to);
+  KeyManager.validateEDDSAPublicKeyHex(to);
 
   if (amount.isEmpty) throw ArgumentError('amount not set');
 
@@ -83,37 +85,29 @@ extension Wallet on TwoFinanceBlockchain {
     }
   }
 
-  const String contractVersion = WALLET_CONTRACT_V1;
   const String method = METHOD_TRANSFER_WALLET;
   final Map<String, dynamic> data = {
     "amount": finalAmount,
     "from": from,
     "to": to,
   };
-
-  // Recupera nonce e incrementa
-  int nonce;
-  try {
-    nonce = await getNonce(from);
-    nonce += 1;
-  } catch (e) {
-    throw Exception('failed to get nonce: $e');
-  }
-
+  final int version = 1;
+  final String uuid7 = newUUID7();
   // Cria a transação
   final newTx = Transaction.create(
+    chainID: _chainID,
     from: from,
     to: to,
-    contractVersion: contractVersion,
     method: method,
-    data: data,
-    nonce: nonce,
+    data: mapToJsonRawMessage(data),
+    version: version,
+    uuid7: uuid7,
   );
 
   final tx = newTx.get();
   late String txSigned;
   try {
-    txSigned = signTransaction(_activePrivateKey!, tx) as String;
+    txSigned = signTransaction(_privateKeyHex!, tx) as String;
   } catch (e) {
     throw Exception('failed to sign transaction: $e');
   }

@@ -2,7 +2,7 @@
 import 'package:two_finance_blockchain/blockchain/log/log.dart';
 
 const String DEPLOY_CONTRACT_ADDRESS = "0x000000000000000000000000000000000000000000000000000000000000";
-
+  
 class StateType {
   final String? type;
   final Map<String, dynamic>? object;

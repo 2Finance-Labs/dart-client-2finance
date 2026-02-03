@@ -5,7 +5,7 @@ void validateUserMap(Map<String, bool> users, String label) {
 for (final entry in users.entries) {
     final addr = entry.key.trim();
     try {
-    KeyManager.validateEdDSAPublicKey(addr);
+    KeyManager.validateEDDSAPublicKeyHex(addr);
     } catch (e) {
     throw ArgumentError("invalid $label address '$addr': $e");
     }

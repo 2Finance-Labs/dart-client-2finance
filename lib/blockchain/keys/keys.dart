@@ -15,8 +15,8 @@ class KeyPair2Finance {
 }
 
 class KeyManager {
-  String? _activePublicKey;
-  String? _activePrivateKey;
+  String? _publicKeyHex;
+  String? _privateKeyHex;
 
   Future<KeyPair2Finance> generateKeyEd25519() async {
     final algorithm = Ed25519();
@@ -27,8 +27,8 @@ class KeyManager {
     final publicKeyHex = bytesToHex(publicKeyBytes);
     final privateKeyHex = bytesToHex(privateKeyBytes);
 
-    _activePublicKey = publicKeyHex;
-    _activePrivateKey = privateKeyHex;
+    _publicKeyHex = publicKeyHex;
+    _privateKeyHex = privateKeyHex;
 
     return KeyPair2Finance(
       publicKey: publicKeyHex,
@@ -37,10 +37,10 @@ class KeyManager {
   }
 
   /// Retorna a chave pública ativa, se houver.
-  String? get activePublicKey => _activePublicKey;
+  String? get activePublicKey => _publicKeyHex;
 
   /// Retorna a chave privada ativa, se houver.
-  String? get activePrivateKey => _activePrivateKey;
+  String? get activePrivateKey => _privateKeyHex;
 
   /// Converte uma lista de bytes para uma string hexadecimal.
   static String bytesToHex(List<int> bytes) {
@@ -59,24 +59,24 @@ class KeyManager {
     return Uint8List.fromList(bytes);
   }
 
-    static void validateEdDSAPublicKey(String publicKeyHex) {
-        if (publicKeyHex.isEmpty) {
-            throw FormatException('Public key cannot be empty.');
-        }
-        print('Validating public key: $publicKeyHex');
-        final bytes = KeyManager.hexToBytes(publicKeyHex);
+  static void validateEDDSAPublicKeyHex(String publicKeyHex) {
+      if (publicKeyHex.isEmpty) {
+          throw FormatException('Public key cannot be empty.');
+      }
+      print('Validating public key: $publicKeyHex');
+      final bytes = KeyManager.hexToBytes(publicKeyHex);
 
-        // Verifica o tamanho: Ed25519 usa 32 bytes para a chave pública
-        if (bytes.length != 32) {
-            throw FormatException(
-            'Size of public key must be 32 bytes (64 hex characters), received: ${bytes.length} bytes.'
-            );
-        }
+      // Verifica o tamanho: Ed25519 usa 32 bytes para a chave pública
+      if (bytes.length != 32) {
+          throw FormatException(
+          'Size of public key must be 32 bytes (64 hex characters), received: ${bytes.length} bytes.'
+          );
+      }
 
-        // Verifica se todos os bytes são zero
-        final isAllZero = bytes.every((b) => b == 0);
-        if (isAllZero) {
-            throw FormatException('Invalid public key: all bytes are zero.');
-        }
-    }
+      // Verifica se todos os bytes são zero
+      final isAllZero = bytes.every((b) => b == 0);
+      if (isAllZero) {
+          throw FormatException('Invalid public key: all bytes are zero.');
+      }
+  }
 }

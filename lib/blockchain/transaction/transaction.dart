@@ -4,100 +4,144 @@ import 'package:cryptography/cryptography.dart';
 import 'package:web3dart/crypto.dart';
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/blockchain/types/types.dart';
+import 'package:two_finance_blockchain/blockchain/utils/json.dart';
+import 'package:two_finance_blockchain/blockchain/utils/uuid.dart';
 
-typedef JSONB = Map<String, dynamic>;
+
 
 abstract class ITransaction {
   Future<void> validateTransaction();
-  Future<void> validate();
   Future<void> validateHash();
-  Future<void> verifySignature();
   Future<String> calculateHash();
-  BigInt calculateFeeGas(int gasLimit, BigInt gasPriceWei);
   Transaction get();
 }
 
 class Transaction implements ITransaction {
+  int chainID;
   String from;
   String to;
-  String contractVersion;
   String method;
-  JSONB data;
-  int nonce;
+  JsonRawMessage data;
+  int version;
+  String uuid7;
   String hash;
   String signature;
-  BigInt? gasFeeTotalWei;
 
   Transaction({
+    required this.chainID,
     required this.from,
     required this.to,
-    required this.contractVersion,
     required this.method,
     required this.data,
-    required this.nonce,
+    required this.version,
+    required this.uuid7,
     this.hash = '',
     this.signature = '',
-    this.gasFeeTotalWei,
   });
 
   @override
   String toString() {
     return '''
   Transaction(
+    chainID: $chainID,
     from: $from,
     to: $to,
-    contractVersion: $contractVersion,
     method: $method,
     data: $data,
-    nonce: $nonce,
+    version: $version,
+    uuid7: $uuid7,
     hash: $hash,
     signature: $signature,
-    gasFeeTotalWei: $gasFeeTotalWei
   )
   ''';
   }
 
   static Transaction create({
+    required int chainID,
     required String from,
     required String to,
-    required String contractVersion,
     required String method,
-    required JSONB data,
-    required int nonce,
+    required JsonRawMessage data,
+    required int version,
+    required String uuid7,
+
   }) {
     return Transaction(
+      chainID: chainID,
       from: from,
       to: to,
-      
-      contractVersion: contractVersion,
       method: method,
       data: data,
-      nonce: nonce,
+      version: version,
+      uuid7: uuid7,
     );
   }
 
   @override
   Future<void> validateTransaction() async {
-    if (from.isEmpty) throw Exception("sender address is required");
-    if (to.isEmpty) throw Exception("recipient address is required");
-    if (method.isEmpty) throw Exception("method is required");
-    if (data.isEmpty) throw Exception("data cannot be empty");
-    if (nonce == 0) throw Exception("nonce must be greater than zero");
-    if (hash.length != 64) throw Exception("hash must be 64 characters long");
-    if (signature.isEmpty) throw Exception("signature cannot be empty");
-  }
-
-  @override
-  Future<void> validate() async {
-    if (from == to) throw Exception("sender and recipient cannot be the same");
-
-    KeyManager.validateEdDSAPublicKey(from);
-    if (to != '' && to != DEPLOY_CONTRACT_ADDRESS) {
-      KeyManager.validateEdDSAPublicKey(to);
+    if (chainID <= 0) {
+      throw Exception("chain ID must be greater than zero");
+    }
+    if (chainID > 2) {
+      throw Exception("unsupported chain ID");
+    }
+    if (from.isEmpty) {
+      throw Exception("sender address is required");
+    }
+    if (to.isEmpty) {
+      throw Exception("recipient address is required");
+    }
+    if (from == to) {
+      throw Exception("sender and recipient cannot be the same");
+    }
+    if (method.isEmpty) {
+      throw Exception("method is required");
+    }
+    if (data == null || data!.isEmpty) {
+      throw Exception("data cannot be empty");
+    }
+    if (version == 0) {
+      throw Exception("version must be greater than zero");
+    }
+    if (hash.length != 64) {
+      throw Exception("hash must be 64 characters long");
+    }
+    if (signature.isEmpty) {
+      throw Exception("signature cannot be empty");
+    }
+    if (signature.length != 128) {
+      throw Exception("signature must be 128 characters long");
     }
 
-    await validateHash();
-    await verifySignature();
+    // Sender pubkey validation
+    try {
+      KeyManager.validateEDDSAPublicKeyHex(from);
+    } catch (e) {
+      throw Exception("invalid sender public key: $e");
+    }
+
+    // Recipient pubkey validation (skip deploy address)
+    if (to.isNotEmpty && to != DEPLOY_CONTRACT_ADDRESS) {
+      try {
+        KeyManager.validateEDDSAPublicKeyHex(to);
+      } catch (e) {
+        throw Exception("invalid recipient public key: $e");
+      }
+    }
+
+    // UUIDv7 validation
+    try {
+      validateUUID7(uuid7);
+    } catch (e) {
+      throw Exception("invalid UUIDv7: $e");
+    }
+
+    // Hash validation
+    try {
+      validateHash();
+    } catch (e) {
+      throw Exception("transaction hash validation failed: $e");
+    }
   }
 
   @override
@@ -105,23 +149,6 @@ class Transaction implements ITransaction {
     final computed = await calculateHash();
     if (computed != hash) {
       throw Exception("invalid hash: expected $computed, got $hash");
-    }
-  }
-
-  @override
-  Future<void> verifySignature() async {
-    final algorithm = Ed25519();
-    final hashBytes = KeyManager.hexToBytes(await calculateHash());
-    final pubKey = SimplePublicKey(KeyManager.hexToBytes(from), type: KeyPairType.ed25519);
-    final sigBytes = KeyManager.hexToBytes(signature);
-
-    if (sigBytes.length != 64) {
-      throw Exception("invalid signature length: expected 64 bytes (Ed25519)");
-    }
-
-    final isValid = await algorithm.verify(hashBytes, signature: Signature(sigBytes, publicKey: pubKey));
-    if (!isValid) {
-      throw Exception("signature verification failed");
     }
   }
 
@@ -136,40 +163,40 @@ class Transaction implements ITransaction {
   }
 
   @override
-  BigInt calculateFeeGas(int gasLimit, BigInt gasPriceWei) {
-    final fee = gasPriceWei * BigInt.from(gasLimit);
-    gasFeeTotalWei = fee;
-    return fee;
-  }
-
-  @override
   Transaction get() => this;
 
   Map<String, dynamic> toJson() => {
+        'chain_id': chainID,
         'from': from,
         'to': to,
-        'contract_version': contractVersion,
         'method': method,
         'data': data,
-        'nonce': nonce,
+        'version': version,
+        'uuid7': uuid7,
         'hash': hash,
         'signature': signature,
-        'gas_fee_total_wei': gasFeeTotalWei?.toString(),
       };
 
-  static Transaction fromJson(Map<String, dynamic> json) => Transaction(
-        from: json['from'],
-        to: json['to'],
-        contractVersion: json['contract_version'],
-        method: json['method'],
-        data: Map<String, dynamic>.from(json['data']),
-        nonce: json['nonce'],
-        hash: json['hash'],
-        signature: json['signature'],
-        gasFeeTotalWei: json['gas_fee_total_wei'] != null
-            ? BigInt.parse(json['gas_fee_total_wei'])
-            : null,
-      );
+  static Transaction fromJson(Map<String, dynamic> json) {
+    final rawData = json['data'];
+    if (rawData == null) {
+      throw Exception("transaction data cannot be null");
+    }
+
+    return Transaction(
+      chainID: json['chain_id'],
+      from: json['from'],
+      to: json['to'],
+      method: json['method'],
+      data: mapToJsonRawMessage(
+        Map<String, dynamic>.from(rawData),
+      ),
+      version: json['version'],
+      uuid7: json['uuid7'],
+      hash: json['hash'],
+      signature: json['signature'],
+    );
+  }
 }
 
 /// Signs a transaction using a hex-encoded Ed25519 private key

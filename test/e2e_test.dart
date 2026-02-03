@@ -81,11 +81,12 @@ void main() {
       print('Initializing TwoFinanceBlockchain plugin...');
       
       keyManager = KeyManager();
-      
-      // ✅ Correct assignment to class-level field
+      int chainID = 1;
+
       final plugin = TwoFinanceBlockchain(
         keyManager: keyManager,
         mqttClient: mqttClient,
+        chainID: chainID,
       );
 
       return plugin;

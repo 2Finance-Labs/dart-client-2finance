@@ -38,7 +38,7 @@ class Review {
   /// Valida se o endereço é uma chave EdDSA válida
   static void _validateAddress(String addr, String label) {
     try {
-      KeyManager.validateEdDSAPublicKey(addr.trim());
+      KeyManager.validateEDDSAPublicKeyHex(addr.trim());
     } catch (e) {
       throw ArgumentError("Invalid $label '$addr': $e");
     }
