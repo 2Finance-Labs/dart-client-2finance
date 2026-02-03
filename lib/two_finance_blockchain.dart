@@ -24,6 +24,7 @@ import 'package:two_finance_blockchain/blockchain/utils/json.dart';
 import 'package:two_finance_blockchain/blockchain/utils/uuid.dart';
 import 'package:two_finance_blockchain/infra/event/request_response.dart';
 import 'package:two_finance_blockchain/infra/mqtt/mqtt.dart';
+import 'package:two_finance_blockchain/two_finance_blockchain_platform_interface.dart';
 
 import 'blockchain/contract/raffleV1/constants.dart';
 import 'blockchain/contract/reviewV1/constants.dart';
@@ -45,9 +46,7 @@ part 'member_get_member.dart';
 
 
 class TwoFinanceBlockchain {
-  
-  static const MethodChannel _channel = MethodChannel('two_finance_blockchain');
-  
+    
   String? _privateKeyHex;
   String? _publicKeyHex;
 
@@ -80,9 +79,9 @@ class TwoFinanceBlockchain {
           _initState();
         }
 
-  Future<String?> getPlatformVersion() async {
-    final String? version = await _channel.invokeMethod('getPlatformVersion');
-    return version;
+
+  Future<String?> getPlatformVersion() {
+    return TwoFinanceBlockchainPlatform.instance.getPlatformVersion();
   }
 
   Future<void> setPrivateKey(String privateKeyHex) async {

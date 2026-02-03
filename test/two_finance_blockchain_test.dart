@@ -26,7 +26,8 @@ void main() {
   test('getPlatformVersion', () async {
     final KeyManager keyManager = KeyManager(); // Provide a valid KeyManager instance
     final MqttClientWrapper mqttClient = MqttClientWrapper(host: '', port: '', clientId: ''); // Provide a valid MqttClientWrapper instance
-    TwoFinanceBlockchain twoFinanceBlockchainPlugin = TwoFinanceBlockchain(keyManager: keyManager, mqttClient: mqttClient);
+    final chaindID = 1;
+    TwoFinanceBlockchain twoFinanceBlockchainPlugin = TwoFinanceBlockchain(keyManager: keyManager, mqttClient: mqttClient, chainID: chaindID);
     MockTwoFinanceBlockchainPlatform fakePlatform = MockTwoFinanceBlockchainPlatform();
     TwoFinanceBlockchainPlatform.instance = fakePlatform;
 
