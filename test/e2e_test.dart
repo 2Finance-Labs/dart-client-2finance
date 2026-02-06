@@ -4,11 +4,11 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:crypto/crypto.dart'; // se precisar
-import 'package:flutter_test/flutter_test.dart';
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/config/config.dart';
 import 'package:two_finance_blockchain/infra/mqtt/mqtt.dart';
 import 'package:two_finance_blockchain/two_finance_blockchain.dart';
+import 'package:test/test.dart';
 
 // ----------------------------------------------------------------------------
 // Helpers

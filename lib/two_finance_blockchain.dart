@@ -5,8 +5,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart' show dotenv; // Para encodar as chaves em base64 ou hex, se necessário.
 import 'package:mqtt_client/mqtt_client.dart' show MqttClient, MqttConnectionState, MqttPublishMessage, MqttPublishPayload;
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:two_finance_blockchain/blockchain/types/types.dart' as types;
@@ -24,7 +22,6 @@ import 'package:two_finance_blockchain/blockchain/utils/json.dart';
 import 'package:two_finance_blockchain/blockchain/utils/uuid.dart';
 import 'package:two_finance_blockchain/infra/event/request_response.dart';
 import 'package:two_finance_blockchain/infra/mqtt/mqtt.dart';
-import 'package:two_finance_blockchain/two_finance_blockchain_platform_interface.dart';
 
 import 'blockchain/contract/raffleV1/constants.dart';
 import 'blockchain/contract/reviewV1/constants.dart';
@@ -68,21 +65,16 @@ class TwoFinanceBlockchain {
   }
 
   final KeyManager _keyManager;
-  final MqttClientWrapper _mqttClient;
+  final MqttClientInterface _mqttClient;
   final int _chainID;
 
-  TwoFinanceBlockchain({required KeyManager keyManager, required MqttClientWrapper mqttClient, required int chainID})
+  TwoFinanceBlockchain({required KeyManager keyManager, required MqttClientInterface mqttClient, required int chainID})
       : _keyManager = keyManager,
         _mqttClient = mqttClient,
         _chainID = chainID
         {
           _initState();
         }
-
-
-  Future<String?> getPlatformVersion() {
-    return TwoFinanceBlockchainPlatform.instance.getPlatformVersion();
-  }
 
   Future<void> setPrivateKey(String privateKeyHex) async {
     try {
@@ -178,7 +170,7 @@ class TwoFinanceBlockchain {
       method: method,
       data: data,
       version: version,
-      uuid7: uuid7,);
+      uuid7: uuid7);
 
     final privateKey = _privateKeyHex;
     if (privateKey == null) {

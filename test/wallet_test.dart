@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:two_finance_blockchain/blockchain/contract/contractV1/models/model.dart';
 import 'package:two_finance_blockchain/blockchain/contract/walletV1/constants.dart';
 import 'package:two_finance_blockchain/blockchain/contract/walletV1/models/wallet.dart';

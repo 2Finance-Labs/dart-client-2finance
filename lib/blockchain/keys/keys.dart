@@ -15,8 +15,6 @@ class KeyPair2Finance {
 }
 
 class KeyManager {
-  String? _publicKeyHex;
-  String? _privateKeyHex;
 
   Future<KeyPair2Finance> generateKeyEd25519() async {
     final algorithm = Ed25519();
@@ -27,20 +25,11 @@ class KeyManager {
     final publicKeyHex = bytesToHex(publicKeyBytes);
     final privateKeyHex = bytesToHex(privateKeyBytes);
 
-    _publicKeyHex = publicKeyHex;
-    _privateKeyHex = privateKeyHex;
-
     return KeyPair2Finance(
       publicKey: publicKeyHex,
       privateKey: privateKeyHex,
     );
   }
-
-  /// Retorna a chave pública ativa, se houver.
-  String? get activePublicKey => _publicKeyHex;
-
-  /// Retorna a chave privada ativa, se houver.
-  String? get activePrivateKey => _privateKeyHex;
 
   /// Converte uma lista de bytes para uma string hexadecimal.
   static String bytesToHex(List<int> bytes) {

@@ -1,15 +1,14 @@
 import 'dart:convert';
 
-import 'package:flutter_test/flutter_test.dart';
 
-import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
-import 'package:two_finance_blockchain/two_finance_blockchain.dart';
-import 'package:two_finance_blockchain/blockchain/contract/tokenV1/constants.dart';
-// ajuste este import conforme seu projeto:
-import 'package:two_finance_blockchain/blockchain/contract/tokenV1/models/token.dart';
-import 'package:two_finance_blockchain/blockchain/contract/contractV1/models/model.dart';
-import 'package:two_finance_blockchain/blockchain/utils/decimals.dart';
-import 'package:two_finance_blockchain/blockchain/contract/tokenV1/models/balance.dart';
+// import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
+// import 'package:two_finance_blockchain/two_finance_blockchain.dart';
+// import 'package:two_finance_blockchain/blockchain/contract/tokenV1/constants.dart';
+// // ajuste este import conforme seu projeto:
+// import 'package:two_finance_blockchain/blockchain/contract/tokenV1/models/token.dart';
+// import 'package:two_finance_blockchain/blockchain/contract/contractV1/models/model.dart';
+// import 'package:two_finance_blockchain/blockchain/utils/decimals.dart';
+// import 'package:two_finance_blockchain/blockchain/contract/tokenV1/models/balance.dart';
 
 import 'e2e_test.dart';
 

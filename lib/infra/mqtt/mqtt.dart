@@ -6,6 +6,8 @@ import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:two_finance_blockchain/infra/utils/tls_utils.dart';
 
 typedef MessageHandler = void Function(MqttClient client, MqttReceivedMessage<MqttMessage> message);
+typedef MqttServerClientFactory = MqttServerClient Function(String host, String clientId);
+
 
 abstract class MqttClientInterface {
   Future<void> connect();
@@ -34,14 +36,18 @@ class MqttClientWrapper implements MqttClientInterface {
     this.username,
     this.password,
     this.caCertPath,
-  });
+    MqttServerClientFactory? clientFactory,
+  }) : clientFactory = clientFactory ?? ((h, id) => MqttServerClient(h, id));
+
+  final MqttServerClientFactory clientFactory;
+
 
   @override
   MqttClient? get client => _client;
 
   @override
   Future<void> connect() async {
-    _client = MqttServerClient(host, clientId);
+    _client = clientFactory(host, clientId);
     _client!
       ..logging(on: false)
       ..keepAlivePeriod = 60
@@ -62,13 +68,9 @@ class MqttClientWrapper implements MqttClientInterface {
         _client!.secure = true;
 
         if (caCertPath != null && caCertPath!.isNotEmpty) {
-          print('caCertPath: $caCertPath');
-          final realPath = await extractCaCertAsset(caCertPath!);
-          print(' Extracted CA Cert Path: $realPath');
-          _client!.securityContext = createSecurityContext(realPath);
+          _client!.securityContext = createSecurityContext(caCertPath!);
         } else {
           _client!.securityContext = SecurityContext.defaultContext;
-          print('⚠️ TLS: No CA cert path provided, using default trust store');
         }
       }
 

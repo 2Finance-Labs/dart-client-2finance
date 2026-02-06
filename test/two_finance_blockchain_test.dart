@@ -1,36 +1,58 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/infra/mqtt/mqtt.dart';
 import 'package:two_finance_blockchain/two_finance_blockchain.dart';
-import 'package:two_finance_blockchain/two_finance_blockchain_platform_interface.dart';
-import 'package:two_finance_blockchain/two_finance_blockchain_method_channel.dart';
-import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:mqtt_client/mqtt_client.dart';
+import 'package:two_finance_blockchain/infra/mqtt/mqtt.dart';
+import 'package:test/test.dart';
 
 import 'e2e_test.dart';
 
-class MockTwoFinanceBlockchainPlatform
-    with MockPlatformInterfaceMixin
-    implements TwoFinanceBlockchainPlatform {
+
+
+class FakeMqttClient implements MqttClientInterface {
+  bool connected = false;
 
   @override
-  Future<String?> getPlatformVersion() => Future.value('42');
+  MqttClient? get client => null;
+
+  @override
+  Future<void> connect() async {
+    connected = true;
+  }
+
+  @override
+  Future<void> disconnect() async {
+    connected = false;
+  }
+
+  @override
+  Future<void> publish(String topic, String payload) async {}
+
+  @override
+  Future<void> subscribe(String topic, {MessageHandler? handler}) async {}
+
+  @override
+  Future<void> unsubscribe(String topic) async {}
 }
 
+
+
 void main() {
-  final TwoFinanceBlockchainPlatform initialPlatform = TwoFinanceBlockchainPlatform.instance;
+  test('initialize marks SDK as initialized', () async {
+    final keyManager = KeyManager();
+    final mqttClient = FakeMqttClient();
+    const chainID = 1;
 
-  test('$MethodChannelTwoFinanceBlockchain is the default instance', () {
-    expect(initialPlatform, isInstanceOf<MethodChannelTwoFinanceBlockchain>());
-  });
+    final sdk = TwoFinanceBlockchain(
+      keyManager: keyManager,
+      mqttClient: mqttClient,
+      chainID: chainID,
+    );
 
-  test('getPlatformVersion', () async {
-    final KeyManager keyManager = KeyManager(); // Provide a valid KeyManager instance
-    final MqttClientWrapper mqttClient = MqttClientWrapper(host: '', port: '', clientId: ''); // Provide a valid MqttClientWrapper instance
-    final chaindID = 1;
-    TwoFinanceBlockchain twoFinanceBlockchainPlugin = TwoFinanceBlockchain(keyManager: keyManager, mqttClient: mqttClient, chainID: chaindID);
-    MockTwoFinanceBlockchainPlatform fakePlatform = MockTwoFinanceBlockchainPlatform();
-    TwoFinanceBlockchainPlatform.instance = fakePlatform;
+    expect(sdk.isInitialized, isFalse);
 
-    expect(await twoFinanceBlockchainPlugin.getPlatformVersion(), '42');
+    await sdk.initialize();
+
+    expect(sdk.isInitialized, isTrue);
   });
 }

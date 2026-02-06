@@ -138,7 +138,7 @@ class Transaction implements ITransaction {
 
     // Hash validation
     try {
-      validateHash();
+      await validateHash();
     } catch (e) {
       throw Exception("transaction hash validation failed: $e");
     }
@@ -157,9 +157,18 @@ class Transaction implements ITransaction {
     final temp = toJson();
     temp['hash'] = '';
     temp['signature'] = '';
-    final encoded = utf8.encode(jsonEncode(temp));
-    final hash = keccak256(Uint8List.fromList(encoded));
-    return KeyManager.bytesToHex(hash);
+
+    // ✅ canonicalize `data` semantically (Map order/whitespace becomes irrelevant)
+    final d = temp['data'];
+    if (d is Uint8List) {
+      final decoded = jsonDecode(utf8.decode(d));     // parse JSON
+      temp['data'] = decoded;                         // store as semantic object
+    }
+
+    final canonical = canonicalJsonEncode(temp);
+    final encoded = Uint8List.fromList(utf8.encode(canonical));
+    final sum = keccak256(encoded);
+    return KeyManager.bytesToHex(sum);
   }
 
   @override
@@ -188,9 +197,7 @@ class Transaction implements ITransaction {
       from: json['from'],
       to: json['to'],
       method: json['method'],
-      data: mapToJsonRawMessage(
-        Map<String, dynamic>.from(rawData),
-      ),
+      data: rawData,
       version: json['version'],
       uuid7: json['uuid7'],
       hash: json['hash'],

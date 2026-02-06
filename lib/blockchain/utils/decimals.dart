@@ -10,6 +10,11 @@ class DecimalRescaler {
 
     // Split into integer and fractional parts
     final parts = value.split('.');
+    // Se tiver mais de um separador decimal, é inválido e deve falhar
+    if (parts.length > 2) {
+      throw FormatException('Invalid numeric input');
+    }
+
     String intPart = parts[0];
     String fracPart = parts.length > 1 ? parts[1] : '';
 
@@ -48,4 +53,6 @@ class DecimalRescaler {
       return combined.substring(0, combined.length + diff);
     }
   }
+
+  
 }
