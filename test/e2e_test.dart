@@ -54,7 +54,7 @@ void main() {
     await future;
     expect(count, 3);
   });
-
+  
   test("Teste genKey", () async {
     final keyManager = KeyManager();
     final (pub, priv) = await genKey(keyManager);
@@ -64,14 +64,17 @@ void main() {
 }
 
  Future<TwoFinanceBlockchain> setupClient() async {
+
     try {
       await Config.loadConfig(env: 'dev', path: 'packages/two_finance_blockchain/assets/.env');
       KeyManager keyManager;
       MqttClientWrapper mqttClient;
+      final uniqueClientId = "${Config.emqxClientId}-${DateTime.now().millisecondsSinceEpoch}";
+
       mqttClient = MqttClientWrapper(
         host: Config.emqxHost,
         port: Config.emqxPort,
-        clientId: Config.emqxClientId,
+        clientId: uniqueClientId,
         useSSL: Config.emqxSSL,
         username: Config.emqxUsername,
         password: Config.emqxPassword,
@@ -88,6 +91,7 @@ void main() {
         mqttClient: mqttClient,
         chainID: chainID,
       );
+      await plugin.initialize(); // ✅ isso seta _isInitialized = true
 
       return plugin;
     } catch (e) {
@@ -95,6 +99,19 @@ void main() {
       rethrow;
     }
 
+}
+
+Future<void> teardownClient(TwoFinanceBlockchain c) async {
+  try {
+    final mc = (c as dynamic)._mqttClient;
+    if (mc != null) {
+      if ((mc as dynamic).disconnect != null) {
+        await (mc as dynamic).disconnect();
+      }
+    }
+  } catch (_) {
+    // ignore
+  }
 }
 
 String randSuffix(int n) {

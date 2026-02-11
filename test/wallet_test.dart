@@ -6,12 +6,13 @@ import 'package:two_finance_blockchain/blockchain/contract/walletV1/models/walle
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/blockchain/types/types.dart';
 import 'package:two_finance_blockchain/two_finance_blockchain.dart';
+import 'package:test/test.dart';
 
 import 'e2e_test.dart';
 
 void main() async {
 
-//  final c = await setupClient();
+//    final c = await setupClient();
 
 //  test("Teste genKey", () async {
 //     final keyManager = KeyManager();

@@ -8,12 +8,12 @@ import 'package:two_finance_blockchain/blockchain/types/types.dart';
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/blockchain/utils/json.dart';
 
-JsonRawMessage _validData() {
+JsonMessage _validData() {
   // mapToJsonRawMessage espera Map<String,dynamic>
-  return mapToJsonRawMessage(<String, dynamic>{
+  return {
     'amount': '10',
     'memo': 'hello',
-  });
+  };
 }
 
 Future<Transaction> _buildSignedValidTx({
@@ -264,15 +264,15 @@ void main() {
       final pair = await validKeyPair();
 
       // Same semantic content, different insertion order
-      final dataA = mapToJsonRawMessage(<String, dynamic>{
+      final JsonMessage dataA = {
         'amount': '10',
         'memo': 'hello',
-      });
+      };
 
-      final dataB = mapToJsonRawMessage(<String, dynamic>{
+      final JsonMessage dataB = {
         'memo': 'hello',
         'amount': '10',
-      });
+      };
 
       final from = pair.publicKey;
       final to = await validPublicKeyHex(); // different key from `from`

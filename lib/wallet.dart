@@ -13,9 +13,9 @@ extension Wallet on TwoFinanceBlockchain {
     const int version = 1;
     final String uuid7 = newUUID7();
     
-    final data = mapToJsonRawMessage({
+    final JsonMessage data = {
       'public_key': pubKey,
-    });
+    };
 
     try {
       final contractOutput = await signAndSendTransaction(
@@ -45,13 +45,15 @@ extension Wallet on TwoFinanceBlockchain {
     }
 
     const String method = METHOD_GET_WALLET_BY_PUBLIC_KEY;
-    final JsonRawMessage data = mapToJsonRawMessage({
+    const String contractVersion = WALLET_CONTRACT_V1;
+    final JsonMessage data = {
       'public_key': pubKey,
-    });
+      'contract_version': contractVersion,
+    };
 
     try {
       final contractOutput = await getState(
-        to: pubKey,
+        to: '',
         method: method,
         data: data,
       );

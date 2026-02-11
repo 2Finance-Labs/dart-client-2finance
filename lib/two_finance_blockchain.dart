@@ -7,22 +7,23 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:mqtt_client/mqtt_client.dart' show MqttClient, MqttConnectionState, MqttPublishMessage, MqttPublishPayload;
 import 'package:mqtt_client/mqtt_server_client.dart';
-import 'package:two_finance_blockchain/blockchain/types/types.dart' as types;
 import 'package:uuid/uuid.dart';
 
 import 'package:two_finance_blockchain/blockchain/contract/constants.dart';
-import 'package:two_finance_blockchain/blockchain/contract/tokenV1/constants.dart';
 import 'package:two_finance_blockchain/blockchain/contract/tokenV1/models/token.dart';
 import 'package:two_finance_blockchain/blockchain/contract/walletV1/constants.dart';
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/blockchain/transaction/transaction.dart';
 import 'package:two_finance_blockchain/blockchain/types/types.dart';
+import 'package:two_finance_blockchain/blockchain/log/log.dart';
+
 import 'package:two_finance_blockchain/blockchain/utils/decimals.dart';
 import 'package:two_finance_blockchain/blockchain/utils/json.dart';
 import 'package:two_finance_blockchain/blockchain/utils/uuid.dart';
 import 'package:two_finance_blockchain/infra/event/request_response.dart';
 import 'package:two_finance_blockchain/infra/mqtt/mqtt.dart';
 
+import 'package:two_finance_blockchain/blockchain/contract/tokenV1/constants.dart';
 import 'blockchain/contract/raffleV1/constants.dart';
 import 'blockchain/contract/reviewV1/constants.dart';
 import 'blockchain/contract/cashbackV1/constants.dart';
@@ -46,6 +47,7 @@ class TwoFinanceBlockchain {
     
   String? _privateKeyHex;
   String? _publicKeyHex;
+  String? get publicKeyHex => _publicKeyHex;
 
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
@@ -157,7 +159,7 @@ class TwoFinanceBlockchain {
     required String from,
     required String to,
     required String method,
-    required JsonRawMessage data,
+    required JsonMessage data,
     required int version,
     required String uuid7,
   }) async {
@@ -193,27 +195,43 @@ class TwoFinanceBlockchain {
   Future<ContractOutput> getState({
     required String to,
     required String method,
-    required JsonRawMessage data,
+    required JsonMessage data,
   }) async {
     try {
-      // Build a transaction input without signature and hash
-      final txInput = {
-        'to': to,
-        'method': method,
-        'data': data, // assuming Map<String, dynamic>
-      };
+    final txInput = {
+      'to': to,
+      'method': method,
+      'data': data,
+    };
 
-      // Make the request (this uses your existing MQTT plugin or handler)
-      final responseBytes = await sendTransaction(
-        REQUEST_METHOD_GET_STATE,
-        txInput,
-        _replyTo!,
-      );
+    final responseBytes = await sendTransaction(
+      REQUEST_METHOD_GET_STATE,
+      txInput,
+      _replyTo!,
+    );
 
-      // Decode JSON response
-      final Map<String, dynamic> contractOutputJson = json.decode(utf8.decode(responseBytes));
+    final dynamic decoded = json.decode(utf8.decode(responseBytes));
 
-      return ContractOutput.fromJson(contractOutputJson);
+    // ✅ caso normal: veio um objeto JSON (ContractOutput)
+    if (decoded is Map<String, dynamic>) {
+      return ContractOutput.fromJson(decoded);
+    }
+
+    // ✅ caso "not found": veio 0 (fallback)
+    if (decoded is int && decoded == 0) {
+      // escolha 1: retornar vazio com listas vazias (mais fácil pra teste)
+      return ContractOutput(states: const <StateType>[], logs: const <Log>[]);
+      // escolha 2 (se você preferir zero-value mesmo): return ContractOutput();
+    }
+
+    // ✅ caso "null" (se o Go realmente mandar null em algum cenário)
+    if (decoded == null) {
+      return ContractOutput();
+    }
+
+    throw Exception(
+      'unexpected getState response type: ${decoded.runtimeType}',
+    );
     } catch (e) {
       throw Exception('failed to get state: from getState function $e');
     }
@@ -241,9 +259,11 @@ class TwoFinanceBlockchain {
     }
     
     final method = METHOD_DEPLOY_CONTRACT;
-    final data = mapToJsonRawMessage({
+    final JsonMessage data = {
       'contract_version': contractVersion,
-    });
+    };
+
+    
 
     final version = 1;
     final uuid7 = newUUID7();
@@ -256,8 +276,5 @@ class TwoFinanceBlockchain {
       throw Exception('failed to deploy contract: $e');
     }
   }
-
-  /// Retorna a chave pública ativa.
-  String? get publicKeyHex => _publicKeyHex;
 
 }

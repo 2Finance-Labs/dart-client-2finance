@@ -21,7 +21,7 @@ class Transaction implements ITransaction {
   String from;
   String to;
   String method;
-  JsonRawMessage data;
+  JsonMessage data;
   int version;
   String uuid7;
   String hash;
@@ -61,7 +61,7 @@ class Transaction implements ITransaction {
     required String from,
     required String to,
     required String method,
-    required JsonRawMessage data,
+    required JsonMessage data,
     required int version,
     required String uuid7,
 

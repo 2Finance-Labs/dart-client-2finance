@@ -19,8 +19,11 @@ class Config {
 
   static bool _isInitialized = false;
 
+  static bool get isInitialized => _isInitialized;
+
 
   static Future<void> loadConfig({required String env, String path = '.env'}) async {
+    if (_isInitialized) return;
     print('[Config] Initializing config for ENV: $env');
     var environment = DotEnv(includePlatformEnvironment: true);
     if (env == 'prod') {
