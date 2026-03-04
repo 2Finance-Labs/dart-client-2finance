@@ -29,9 +29,9 @@ void main() {
       await c.setPrivateKey(kp.privateKey);
 
       // // deploy token contract
-      // final deployed = await c.deployContract1(TOKEN_CONTRACT_V1);
-      // expect(deployed.states, isNotNull);
-      // expect(deployed.states!, isNotEmpty);
+      final deployed = await c.deployContract1(TOKEN_CONTRACT_V1);
+      expect(deployed.logs, isNotNull);
+      expect(deployed.logs!, isNotEmpty);
 
       // final contr = unmarshalState(
       //   deployed.states!.first.object,
