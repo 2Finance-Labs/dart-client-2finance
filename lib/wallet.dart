@@ -14,6 +14,7 @@ extension Wallet on TwoFinanceBlockchain {
     final String uuid7 = newUUID7();
     
     final JsonMessage data = {
+      'address': address,
       'public_key': pubKey,
     };
 
@@ -33,7 +34,7 @@ extension Wallet on TwoFinanceBlockchain {
     }
   }
 
-  Future<ContractOutput> getWallet(String pubKey) async {
+  Future<ContractOutput> getWalletByPublicKey(String pubKey) async {
     if (pubKey.isEmpty) {
       throw ArgumentError('public key not set');
     }
@@ -48,6 +49,30 @@ extension Wallet on TwoFinanceBlockchain {
     const String contractVersion = WALLET_CONTRACT_V1;
     final JsonMessage data = {
       'public_key': pubKey,
+      'contract_version': contractVersion,
+    };
+
+    try {
+      final contractOutput = await getState(
+        to: '',
+        method: method,
+        data: data,
+      );
+      return contractOutput;
+    } catch (e) {
+      throw Exception('failed to get state: $e');
+    }
+  }
+
+  Future<ContractOutput> getWalletByAddress(String address) async {
+    if (address.isEmpty) {
+      throw ArgumentError('address not set');
+    }
+
+    const String method = METHOD_GET_WALLET_BY_ADDRESS;
+    const String contractVersion = WALLET_CONTRACT_V1;
+    final JsonMessage data = {
+      'address': address,
       'contract_version': contractVersion,
     };
 

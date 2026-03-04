@@ -2,7 +2,8 @@ import 'dart:convert';
 
 import 'package:test/test.dart';
 
-import 'package:two_finance_blockchain/blockchain/contract/contractV1/models/model.dart';
+import 'package:two_finance_blockchain/blockchain/contract/contractV1/models/model.dart' as models;
+import 'package:two_finance_blockchain/blockchain/contract/contractV1/domain/contract.dart' as domain;
 import 'package:two_finance_blockchain/blockchain/contract/walletV1/models/wallet.dart';
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/two_finance_blockchain.dart';
@@ -52,16 +53,28 @@ void main() {
       final kp = await c.generateKeyEd25519();
       await c.setPrivateKey(kp.privateKey);
 
-      // seu deployContract exige contractVersion != ""
-      // WALLET_CONTRACT_V1 normalmente é a string de versão (ex: "wallet_v1")
       final contractOutput = await c.deployContract1(WALLET_CONTRACT_V1);
 
-      final firstLog = contractOutput.logs!.first;
-
-      // validações básicas do output
-      expect(contractOutput.contractAddress, isNotNull);
+      expect(contractOutput, isNotNull);
       expect(contractOutput.logs, isNotNull);
       expect(contractOutput.logs!, isNotEmpty);
+
+      final firstLog = contractOutput.logs!.first;
+      expect(firstLog.logType, 'Contract_Deployed');
+      expect(firstLog.logIndex, 1);
+      expect(firstLog.transactionHash, isNotEmpty);
+      expect(firstLog.contractVersion, WALLET_CONTRACT_V1);
+      expect(firstLog.contractAddress, isNotEmpty);
+      expect(firstLog.event, isNotEmpty);
+
+      final deployed = unmarshalEvent<domain.Contract>(
+          firstLog.event,
+          domain.Contract.fromJson,
+      );
+
+      expect(deployed.address, isNotEmpty);
+      expect(deployed.contractVersion, equals(WALLET_CONTRACT_V1));
+      
     });
 
     test('getState: record not found retorna "0" (fallback)', () async {

@@ -70,7 +70,57 @@ void main() async {
 
             expect(deployed.address, isNotEmpty);
             expect(deployed.contractVersion, equals(WALLET_CONTRACT_V1));
-        });
+            print('Deployed contract at address: ${deployed.address}');
+            print('Deployed public key: ${kp.publicKey}');
+
+            final addWalletOutput = await c.addWallet(deployed.address, kp.publicKey);
+            expect(addWalletOutput, isNotNull);
+            expect(addWalletOutput.logs, isNotNull);
+            expect(addWalletOutput.logs!, isNotEmpty);
+
+            final addWalletLog = addWalletOutput.logs!.first;
+            expect(addWalletLog.logType, 'Wallet_Created');
+            expect(addWalletLog.logIndex, 1);
+            expect(addWalletLog.transactionHash, isNotEmpty);
+            expect(addWalletLog.contractVersion, WALLET_CONTRACT_V1);
+            expect(addWalletLog.contractAddress, deployed.address);
+            expect(addWalletLog.event, isNotEmpty);
+
+            final createdWallet = unmarshalEvent<walletDomain.Wallet>(
+                addWalletLog.event,
+                walletDomain.Wallet.fromJson,
+            );
+
+            expect(createdWallet.publicKey, equals(kp.publicKey));
+            expect(createdWallet.address, equals(deployed.address));
+
+            final getWalletOutput = await c.getWalletByAddress(deployed.address);
+            expect(getWalletOutput, isNotNull);
+            expect(getWalletOutput.states, isNotNull);
+            expect(getWalletOutput.states!, isNotEmpty);
+
+            final getWalletStates = getWalletOutput.states;
+            expect(getWalletStates, isNotNull);
+            expect(getWalletStates!, isNotEmpty);
+
+            final StateType state = getWalletStates!.first;
+
+            final walletState = unmarshalState<walletModels.WalletState>(
+                state.object,
+                walletModels.WalletState.fromJson,
+            );
+
+            expect(walletState.publicKey, equals(kp.publicKey));
+            expect(walletState.address, equals(deployed.address));
+            expect(walletState.createdAt, isNotNull);
+            expect(walletState.createdAt, isA<DateTime>());
+            expect(walletState.updatedAt, isNotNull);
+            expect(walletState.updatedAt, isA<DateTime>());
+            expect(walletState.createdAt.isAfter(DateTime.utc(2000, 1, 1)), isTrue);
+            expect(walletState.updatedAt.isAfter(DateTime.utc(2000, 1, 1)), isTrue);
+            expect(walletState.updatedAt.isAfter(walletState.createdAt) || 
+                walletState.updatedAt.isAtSameMomentAs(walletState.createdAt), isTrue);
+            });
         
     });
 

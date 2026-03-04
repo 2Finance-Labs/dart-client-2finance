@@ -52,7 +52,6 @@ class KeyManager {
       if (publicKeyHex.isEmpty) {
           throw FormatException('Public key cannot be empty.');
       }
-      print('Validating public key: $publicKeyHex');
       final bytes = KeyManager.hexToBytes(publicKeyHex);
 
       // Verifica o tamanho: Ed25519 usa 32 bytes para a chave pública
