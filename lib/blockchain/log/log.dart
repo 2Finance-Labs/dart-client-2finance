@@ -5,7 +5,7 @@ abstract class ILog {
   String getLogType();
   int getLogIndex();
   String getTransactionHash();
-  Map<String, dynamic> getEvent();
+  String getEvent();
   String getContractVersion();
   String getContractAddress();
   void validateLog();
@@ -16,10 +16,9 @@ class Log implements ILog {
   final String logType;
   final int logIndex;
   final String transactionHash;
-  final Map<String, dynamic> event;
+  final String event;
   final String contractVersion;
   final String contractAddress;
-  final DateTime createdAt;
 
   Log({
     required this.logType,
@@ -28,18 +27,20 @@ class Log implements ILog {
     required this.event,
     required this.contractVersion,
     required this.contractAddress,
-    required this.createdAt,
   });
 
   factory Log.fromJson(Map<String, dynamic> json) {
+    final dynamic ev = json['event'];
+    if (ev == null || ev is! String || ev.isEmpty) {
+      throw Exception('log event is required');
+    }
     return Log(
-      logType: json['log_type'],
-      logIndex: json['log_index'],
-      transactionHash: json['transaction_hash'],
-      event: json['event'] ?? <String, dynamic>{},
-      contractVersion: json['contract_version'],
-      contractAddress: json['contract_address'],
-      createdAt: DateTime.parse(json['created_at']),
+      logType: json['log_type'] as String,
+      logIndex: (json['log_index'] as num).toInt(),
+      transactionHash: json['transaction_hash'] as String,
+      event: json['event'] as String, // base64
+      contractVersion: json['contract_version'] as String,
+      contractAddress: json['contract_address'] as String,
     );
   }
 
@@ -51,7 +52,6 @@ class Log implements ILog {
       'event': event,
       'contract_version': contractVersion,
       'contract_address': contractAddress,
-      'created_at': createdAt.toIso8601String(),
     };
   }
 
@@ -65,7 +65,7 @@ class Log implements ILog {
   String getTransactionHash() => transactionHash;
 
   @override
-  Map<String, dynamic> getEvent() => event;
+  String getEvent() => event;
 
   @override
   String getContractVersion() => contractVersion;
@@ -101,7 +101,7 @@ Log newLog({
   required String logType,
   required int logIndex,
   required String transactionHash,
-  required Map<String, dynamic> event,
+  required String event,
   required String contractVersion,
   required String contractAddress,
 }) {
@@ -112,6 +112,5 @@ Log newLog({
     event: event,
     contractVersion: contractVersion,
     contractAddress: contractAddress,
-    createdAt: DateTime.now().toUtc(),
   );
 }

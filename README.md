@@ -12,3 +12,14 @@ Android and/or iOS.
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+
+## Tests
+
+Local
+dart test
+
+E2E
+```
+RUN_E2E_MQTT=1 MQTT_HOST=127.0.0.1 MQTT_PORT=1883 dart test -t e2e
+```

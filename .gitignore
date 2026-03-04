@@ -34,3 +34,6 @@ build/
 
 assets/.env
 assets/certificates/emqxsl-ca.crt
+
+# FVM Version Cache
+.fvm/

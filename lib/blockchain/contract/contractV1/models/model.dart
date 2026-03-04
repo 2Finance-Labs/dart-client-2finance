@@ -1,6 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 
-class ContractStateModel {
+class ContractState {
   @JsonKey(name: 'address')
   final String address;
 
@@ -12,15 +12,15 @@ class ContractStateModel {
 
   static const String tableName = "contract_state_v1";
 
-  ContractStateModel({
+  ContractState({
     required this.address,
     required this.contractVersion,
     required this.createdAt,
   });
 
   /// Cria uma instância a partir de um JSON.
-  factory ContractStateModel.fromJson(Map<String, dynamic> json) {
-    return ContractStateModel(
+  factory ContractState.fromJson(Map<String, dynamic> json) {
+    return ContractState(
       address: json['address'] as String,
       contractVersion: json['contract_version'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -43,6 +43,6 @@ class ContractStateModel {
 
   @override
   String toString() {
-    return 'ContractStateModel(address: $address, contractVersion: $contractVersion, createdAt: $createdAt)';
+    return 'ContractState(address: $address, contractVersion: $contractVersion, createdAt: $createdAt)';
   }
 }

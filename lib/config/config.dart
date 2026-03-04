@@ -1,5 +1,4 @@
-// lib/config/config.dart
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:dotenv/dotenv.dart';
 
 class Config {
   static late final String emqxScheme;
@@ -20,33 +19,38 @@ class Config {
 
   static bool _isInitialized = false;
 
+  static bool get isInitialized => _isInitialized;
+
 
   static Future<void> loadConfig({required String env, String path = '.env'}) async {
+    if (_isInitialized) return;
     print('[Config] Initializing config for ENV: $env');
-
+    var environment = DotEnv(includePlatformEnvironment: true);
     if (env == 'prod') {
       try {
-        await dotenv.load(fileName: path);
+        //await dotenv.load(fileName: path);
+        environment.load([path]);
+
       } catch (e) {
         print('[Config] Failed to load .env file at $path: $e');
         throw Exception('Missing or invalid .env file');
       }
 
-      emqxScheme = dotenv.env['EMQX_SCHEME'] ?? 'tcp';
-      emqxHost = dotenv.env['EMQX_HOST'] ?? 'localhost';
-      emqxPort = dotenv.env['EMQX_PORT'] ?? '1883';
-      emqxSSL = (dotenv.env['EMQX_SSL']?.toLowerCase() ?? 'false') == 'true';
-      emqxUsername = dotenv.env['EMQX_USERNAME'] ?? '';
-      emqxPassword = dotenv.env['EMQX_PASSWORD'] ?? '';
-      emqxClientId = dotenv.env['EMQX_CLIENT_ID'] ?? 'flutter_plugin_client';
-      emqxCaCertPath = dotenv.env['EMQX_CA_CERT_PATH'] ?? '';
+      emqxScheme = environment['EMQX_SCHEME'] ?? 'tcp';
+      emqxHost = environment['EMQX_HOST'] ?? 'localhost';
+      emqxPort = environment['EMQX_PORT'] ?? '1883';
+      emqxSSL = (environment['EMQX_SSL']?.toLowerCase() ?? 'false') == 'true';
+      emqxUsername = environment['EMQX_USERNAME'] ?? '';
+      emqxPassword = environment['EMQX_PASSWORD'] ?? '';
+      emqxClientId = environment['EMQX_CLIENT_ID'] ?? 'flutter_plugin_client';
+      emqxCaCertPath = environment['EMQX_CA_CERT_PATH'] ?? '';
 
-      keycloakClientId = dotenv.env['KEYCLOAK_CLIENT_ID'] ?? '';
-      keycloakClientSecret = dotenv.env['KEYCLOAK_CLIENT_SECRET'] ?? '';
-      keycloakState = dotenv.env['KEYCLOAK_STATE'] ?? '';
-      keycloakRealm = dotenv.env['KEYCLOAK_REALM'] ?? '';
-      keycloakHostname = dotenv.env['KEYCLOAK_HOSTNAME'] ?? '';
-      keycloakRedirectUrl = dotenv.env['KEYCLOAK_REDIRECT_URL'] ?? '';
+      keycloakClientId = environment['KEYCLOAK_CLIENT_ID'] ?? '';
+      keycloakClientSecret = environment['KEYCLOAK_CLIENT_SECRET'] ?? '';
+      keycloakState = environment['KEYCLOAK_STATE'] ?? '';
+      keycloakRealm = environment['KEYCLOAK_REALM'] ?? '';
+      keycloakHostname = environment['KEYCLOAK_HOSTNAME'] ?? '';
+      keycloakRedirectUrl = environment['KEYCLOAK_REDIRECT_URL'] ?? '';
       _isInitialized = true;
 
       return;

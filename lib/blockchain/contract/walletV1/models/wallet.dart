@@ -1,40 +1,36 @@
 //wallet.go
-class WalletStateModel {
+class WalletState {
+  final String address;
   final String publicKey;
-  final String amount;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
 
-  WalletStateModel({
+  WalletState({
+    required this.address,
     required this.publicKey,
-    required this.amount,
-    this.createdAt,
-    this.updatedAt,
+    required this.createdAt,
+    required this.updatedAt,
   });
 
-  factory WalletStateModel.fromJson(Map<String, dynamic> json) {
-    return WalletStateModel(
+  factory WalletState.fromJson(Map<String, dynamic> json) {
+    return WalletState(
+      address: json['address'] as String,
       publicKey: json['public_key'] as String,
-      amount: json['amount'] as String,
-      createdAt: json['created_at'] != null
-          ? DateTime.tryParse(json['created_at'] as String)
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.tryParse(json['updated_at'] as String)
-          : null,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'address': address,
       'public_key': publicKey,
-      'amount': amount,
-      'created_at': createdAt?.toIso8601String(),
-      'updated_at': updatedAt?.toIso8601String(),
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
     };
   }
 
   @override
   String toString() =>
-      'Wallet(publicKey: $publicKey, amount: $amount, createdAt: $createdAt, updatedAt: $updatedAt)';
+      'Wallet(address: $address, publicKey: $publicKey, createdAt: $createdAt, updatedAt: $updatedAt)';
 }

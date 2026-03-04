@@ -6,23 +6,27 @@ extension Wallet on TwoFinanceBlockchain {
     if (pubKey.isEmpty) {
       throw ArgumentError('public key not set');
     }
+    final chainID = _chainID;
     final from = pubKey;
     final String to = address;
-    const String contractVersion = WALLET_CONTRACT_V1;
     const String method = METHOD_ADD_WALLET;
-
-    final data = {
-      "amount": "0",
-      "public_key": pubKey,
+    const int version = 1;
+    final String uuid7 = newUUID7();
+    
+    final JsonMessage data = {
+      'address': address,
+      'public_key': pubKey,
     };
 
     try {
       final contractOutput = await signAndSendTransaction(
+        chainID: chainID,
         from: from,
         to: to,
-        contractVersion: contractVersion,
         method: method,
         data: data,
+        version: version,
+        uuid7: uuid7
       );
       return contractOutput;
     } catch (e) {
@@ -30,26 +34,27 @@ extension Wallet on TwoFinanceBlockchain {
     }
   }
 
-  Future<ContractOutput> getWallet(String pubKey) async {
+  Future<ContractOutput> getWalletByPublicKey(String pubKey) async {
     if (pubKey.isEmpty) {
       throw ArgumentError('public key not set');
     }
 
     try {
-      KeyManager.validateEdDSAPublicKey(pubKey);
+      KeyManager.validateEDDSAPublicKeyHex(pubKey);
     } catch (e) {
       throw ArgumentError('invalid public key: $e');
     }
 
-    const String contractVersion = WALLET_CONTRACT_V1;
     const String method = METHOD_GET_WALLET_BY_PUBLIC_KEY;
-    final Map<String, dynamic> data = {
+    const String contractVersion = WALLET_CONTRACT_V1;
+    final JsonMessage data = {
       'public_key': pubKey,
+      'contract_version': contractVersion,
     };
 
     try {
       final contractOutput = await getState(
-        contractVersion: contractVersion,
+        to: '',
         method: method,
         data: data,
       );
@@ -59,76 +64,28 @@ extension Wallet on TwoFinanceBlockchain {
     }
   }
 
-  Future<ContractOutput> transferWallet({
-  required String to,
-  required String amount,
-  int decimals = 0,
-}) async {
-  final from = _activePublicKey!;
-  if (from.isEmpty) throw ArgumentError('public key not set');
+  Future<ContractOutput> getWalletByAddress(String address) async {
+    if (address.isEmpty) {
+      throw ArgumentError('address not set');
+    }
 
-  if (to.isEmpty) throw ArgumentError('to address not set');
-  if (to == from) throw ArgumentError('cannot transfer to the same address');
-  KeyManager.validateEdDSAPublicKey(to);
+    const String method = METHOD_GET_WALLET_BY_ADDRESS;
+    const String contractVersion = WALLET_CONTRACT_V1;
+    final JsonMessage data = {
+      'address': address,
+      'contract_version': contractVersion,
+    };
 
-  if (amount.isEmpty) throw ArgumentError('amount not set');
-
-  // Ajusta a quantidade se houver casas decimais
-  String finalAmount = amount;
-  if (decimals != 0) {
     try {
-      finalAmount = DecimalRescaler.rescaleString(amount, 0, decimals);
+      final contractOutput = await getState(
+        to: '',
+        method: method,
+        data: data,
+      );
+      return contractOutput;
     } catch (e) {
-      throw Exception('failed to convert amount to big int: $e');
+      throw Exception('failed to get state: $e');
     }
   }
-
-  const String contractVersion = WALLET_CONTRACT_V1;
-  const String method = METHOD_TRANSFER_WALLET;
-  final Map<String, dynamic> data = {
-    "amount": finalAmount,
-    "from": from,
-    "to": to,
-  };
-
-  // Recupera nonce e incrementa
-  int nonce;
-  try {
-    nonce = await getNonce(from);
-    nonce += 1;
-  } catch (e) {
-    throw Exception('failed to get nonce: $e');
-  }
-
-  // Cria a transação
-  final newTx = Transaction.create(
-    from: from,
-    to: to,
-    contractVersion: contractVersion,
-    method: method,
-    data: data,
-    nonce: nonce,
-  );
-
-  final tx = newTx.get();
-  late String txSigned;
-  try {
-    txSigned = signTransaction(_activePrivateKey!, tx) as String;
-  } catch (e) {
-    throw Exception('failed to sign transaction: $e');
-  }
-
-  // Envia a transação
-  try {
-    await sendTransaction(REQUEST_METHOD_SEND_TRANSACTION, txSigned, _replyTo);
-  } catch (e) {
-    throw Exception('failed to send transaction: $e');
-  }
-
-  // TODO: Mapear o ContractOutput como no Go (Transfer, Events, WalletSender/Receiver, etc.)
-  final contractOutput = ContractOutput();
-
-  return contractOutput;
-}
 
 }

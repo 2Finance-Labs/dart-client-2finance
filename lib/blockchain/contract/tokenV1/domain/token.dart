@@ -1,11 +1,12 @@
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/blockchain/contract/tokenV1/domain/fee.dart';
+import 'package:two_finance_blockchain/blockchain/contract/tokenV1/domain/access_policy.dart';
 
 void validateUserMap(Map<String, bool> users, String label) {
 for (final entry in users.entries) {
     final addr = entry.key.trim();
     try {
-    KeyManager.validateEdDSAPublicKey(addr);
+    KeyManager.validateEDDSAPublicKeyHex(addr);
     } catch (e) {
     throw ArgumentError("invalid $label address '$addr': $e");
     }
@@ -23,7 +24,7 @@ class Token {
   final String? address;
   final String? hash;
   final String? owner;
-  //final List<FeeTier>? feeTiersList;
+  final List<FeeTier>? feeTiersList;
   final String? feeAddress;
 
   // Metadata fields
@@ -38,9 +39,9 @@ class Token {
   final String? creator;
   final String? creatorWebsite;
 
-  // Allow and block lists
-  final Map<String, bool>? allowUsersMap;
-  final Map<String, bool>? blockUsersMap;
+  final AccessPolicy? accessPolicy;
+
+  final Map<String, bool>? frozenAccounts;
 
   // Authority revocation flags
   final bool? freezeAuthorityRevoked;
@@ -50,6 +51,12 @@ class Token {
   // Pause
   final bool? paused;
   final DateTime? expiredAt;
+
+  final String? assetGlbUri;
+  final String? tokenType;
+  final List<String>? tokenUUIDList;
+  final bool? transferable;
+  final bool? stablecoin;
 
   Token({
     this.symbol,
@@ -69,13 +76,18 @@ class Token {
     this.tags,
     this.creator,
     this.creatorWebsite,
-    this.allowUsersMap,
-    this.blockUsersMap,
+    this.accessPolicy,
+    this.frozenAccounts,
     this.freezeAuthorityRevoked,
     this.mintAuthorityRevoked,
     this.updateAuthorityRevoked,
     this.paused,
     this.expiredAt,
+    this.assetGlbUri,
+    this.tokenType,
+    this.tokenUUIDList,
+    this.transferable,
+    this.stablecoin,
   });
 
   factory Token.fromJson(Map<String, dynamic> json) {
@@ -102,9 +114,10 @@ class Token {
           ?.map((k, v) => MapEntry(k, v as String)),
       creator: json['creator'] as String?,
       creatorWebsite: json['creator_website'] as String?,
-      allowUsersMap: (json['allow_users'] as Map<String, dynamic>?)
-          ?.map((k, v) => MapEntry(k, v as bool)),
-      blockUsersMap: (json['block_users'] as Map<String, dynamic>?)
+      accessPolicy: json['access_policy'] != null
+          ? AccessPolicy.fromJson(json['access_policy'] as Map<String, dynamic>)
+          : null,
+      frozenAccounts: (json['frozen_accounts'] as Map<String, dynamic>?)
           ?.map((k, v) => MapEntry(k, v as bool)),
       freezeAuthorityRevoked: json['freeze_authority_revoked'] as bool?,
       mintAuthorityRevoked: json['mint_authority_revoked'] as bool?,
@@ -113,6 +126,13 @@ class Token {
       expiredAt: json['expired_at'] != null
           ? DateTime.tryParse(json['expired_at'] as String)
           : null,
+      assetGlbUri: json['asset_glb_uri'] as String?,
+      tokenType: json['token_type'] as String?,
+      tokenUUIDList: (json['token_uuid_list'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+      transferable: json['transferable'] as bool?,
+      stablecoin: json['stablecoin'] as bool?,
     );
   }
 
@@ -135,17 +155,18 @@ class Token {
       'tags': tags,
       'creator': creator,
       'creator_website': creatorWebsite,
-      'allow_users': allowUsersMap,
-      'block_users': blockUsersMap,
+      'access_policy': accessPolicy?.toJson(),
+      'frozen_accounts': frozenAccounts,
       'freeze_authority_revoked': freezeAuthorityRevoked,
       'mint_authority_revoked': mintAuthorityRevoked,
       'update_authority_revoked': updateAuthorityRevoked,
       'paused': paused,
       'expired_at': expiredAt?.toIso8601String(),
+      'asset_glb_uri': assetGlbUri,
+      'token_type': tokenType,
+      'token_uuid_list': tokenUUIDList,
+      'transferable': transferable,
+      'stablecoin': stablecoin,
     };
   }
-
-  @override
-  String toString() =>
-      'Token(symbol: $symbol, name: $name, decimals: $decimals, totalSupply: $totalSupply, address: $address)';
 }

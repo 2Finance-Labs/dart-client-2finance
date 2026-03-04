@@ -1,5 +1,5 @@
 const String RAFFLE_CONTRACT_V1 = "raffle_V1";
-const String METHOD_ADD_RAFFLE = "add_Token";
+const String METHOD_ADD_RAFFLE = "add_raffle";
 const String METHOD_LIST_RAFFLES = "list_raffles";
 const String METHOD_UPDATE_RAFFLE = "update_raffle";
 const String METHOD_PAUSE_RAFFLE = "pause_raflfe";
@@ -15,3 +15,4 @@ const String METHOD_GET_RAFFLE = "get_raffle";
 
 
 
+    

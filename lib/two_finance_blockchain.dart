@@ -5,24 +5,27 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:cryptography/cryptography.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart' show dotenv; // Para encodar as chaves em base64 ou hex, se necessário.
 import 'package:mqtt_client/mqtt_client.dart' show MqttClient, MqttConnectionState, MqttPublishMessage, MqttPublishPayload;
 import 'package:mqtt_client/mqtt_server_client.dart';
-import 'package:two_finance_blockchain/blockchain/types/types.dart' as types;
 import 'package:uuid/uuid.dart';
 
 import 'package:two_finance_blockchain/blockchain/contract/constants.dart';
-import 'package:two_finance_blockchain/blockchain/contract/tokenV1/constants.dart';
 import 'package:two_finance_blockchain/blockchain/contract/tokenV1/models/token.dart';
+import 'package:two_finance_blockchain/blockchain/contract/tokenV1/domain/token.dart';
+import 'package:two_finance_blockchain/blockchain/contract/tokenV1/domain/access_policy.dart';
 import 'package:two_finance_blockchain/blockchain/contract/walletV1/constants.dart';
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/blockchain/transaction/transaction.dart';
 import 'package:two_finance_blockchain/blockchain/types/types.dart';
+import 'package:two_finance_blockchain/blockchain/log/log.dart';
+
 import 'package:two_finance_blockchain/blockchain/utils/decimals.dart';
+import 'package:two_finance_blockchain/blockchain/utils/json.dart';
+import 'package:two_finance_blockchain/blockchain/utils/uuid.dart';
 import 'package:two_finance_blockchain/infra/event/request_response.dart';
 import 'package:two_finance_blockchain/infra/mqtt/mqtt.dart';
 
+import 'package:two_finance_blockchain/blockchain/contract/tokenV1/constants.dart';
 import 'blockchain/contract/raffleV1/constants.dart';
 import 'blockchain/contract/reviewV1/constants.dart';
 import 'blockchain/contract/cashbackV1/constants.dart';
@@ -43,11 +46,10 @@ part 'member_get_member.dart';
 
 
 class TwoFinanceBlockchain {
-  
-  static const MethodChannel _channel = MethodChannel('two_finance_blockchain');
-  
-  String? _activePrivateKey;
-  String? _activePublicKey;
+    
+  String? _privateKeyHex;
+  String? _publicKeyHex;
+  String? get publicKeyHex => _publicKeyHex;
 
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
@@ -67,18 +69,16 @@ class TwoFinanceBlockchain {
   }
 
   final KeyManager _keyManager;
-  final MqttClientWrapper _mqttClient;
+  final MqttClientInterface _mqttClient;
+  final int _chainID;
 
-  TwoFinanceBlockchain({required KeyManager keyManager, required MqttClientWrapper mqttClient})
+  TwoFinanceBlockchain({required KeyManager keyManager, required MqttClientInterface mqttClient, required int chainID})
       : _keyManager = keyManager,
-        _mqttClient = mqttClient {
+        _mqttClient = mqttClient,
+        _chainID = chainID
+        {
           _initState();
         }
-
-  Future<String?> getPlatformVersion() async {
-    final String? version = await _channel.invokeMethod('getPlatformVersion');
-    return version;
-  }
 
   Future<void> setPrivateKey(String privateKeyHex) async {
     try {
@@ -101,11 +101,11 @@ class TwoFinanceBlockchain {
       final publicKeyBytes = (await keyPair.extractPublicKey()).bytes;
 
       // Armazena as chaves ativas usando os métodos auxiliares
-      _activePrivateKey = privateKeyHex;
-      _activePublicKey = KeyManager.bytesToHex(publicKeyBytes);
+      _privateKeyHex = privateKeyHex;
+      _publicKeyHex = KeyManager.bytesToHex(publicKeyBytes);
 
       print('✅ Chave privada definida e chave pública derivada com sucesso!');
-      print('🔑 Chave Pública Ativa: $_activePublicKey');
+      print('🔑 Chave Pública Ativa: $_publicKeyHex');
     } on FormatException catch (e) {
       throw FormatException('Erro de formato na chave privada: ${e.message}');
     } catch (e) {
@@ -115,31 +115,6 @@ class TwoFinanceBlockchain {
 
   Future<KeyPair2Finance> generateKeyEd25519() async {
     return await _keyManager.generateKeyEd25519();
-  }
-
-  Future<int> getNonce(String publicKey) async {
-    if (publicKey.isEmpty) {
-      throw Exception("public key not set");
-    }
-
-    KeyManager.validateEdDSAPublicKey(publicKey);
-
-    final transactionInput = {'from': publicKey};
-
-    final outputBytes = await sendTransaction(
-      REQUEST_METHOD_GET_NONCE,
-      transactionInput,
-      _replyTo,
-    );
-
-    final decoded = json.decode(utf8.decode(outputBytes));
-    if (decoded is int) {
-      return decoded;
-    } else if (decoded is String) {
-      return int.parse(decoded);
-    } else {
-      throw Exception("failed to decode nonce: unexpected format");
-    }
   }
 
   Future<Uint8List> sendTransaction(String method, dynamic tx, String replyTo) async {
@@ -171,7 +146,7 @@ class TwoFinanceBlockchain {
     final resp = ResponsePayload.fromJson(decoded);
 
     if (resp.status == RESPONSE_STATUS_ERROR) {
-      if (resp.message?.contains("record not found") == true && method == "get_nonce") {
+      if (resp.message?.contains("record not found") == true) {
         return Uint8List.fromList(utf8.encode("0")); // Return zero as fallback
       }
       throw Exception("error in response: ${resp.message}");
@@ -182,121 +157,161 @@ class TwoFinanceBlockchain {
 
 
   Future<ContractOutput> signAndSendTransaction({
+    required int chainID,
     required String from,
     required String to,
-    required String contractVersion,
     required String method,
-    required Map<String, dynamic> data,
+    required JsonMessage data,
+    required int version,
+    required String uuid7,
   }) async {
-    KeyManager.validateEdDSAPublicKey(from);
-    // Get current nonce and handle "record not found"
-    int nonce;
-    try {
-      nonce = await getNonce(from);
-    } catch (e) {
-      if (e.toString().contains('record not found')) {
-        nonce = 0;
-      } else {
-        throw Exception('failed to get nonce: $e');
-      }
-    }
-
-    nonce++; // Increment nonce
-
+    KeyManager.validateEDDSAPublicKeyHex(from);
     
     final newTx = Transaction.create(
+      chainID: chainID,
       from: from,
       to: to,
-      contractVersion: contractVersion,
       method: method,
       data: data,
-      nonce: nonce,
-    );
+      version: version,
+      uuid7: uuid7);
 
-    final privateKey = _activePrivateKey;
+    final privateKey = _privateKeyHex;
     if (privateKey == null) {
       throw Exception("Active private key is not initialized");
     }
     final tx = newTx.get();
-    final txSigned = await signTransaction( activePrivateKey ?? "", tx);
+    final txSigned = await signTransaction( privateKey ?? "", tx);
     // Send to network
     final responseBytes = await sendTransaction(
       REQUEST_METHOD_SEND_TRANSACTION,
       txSigned,
       _replyTo!,
     );
-
     // Decode response
     final decoded = json.decode(utf8.decode(responseBytes));
-    return ContractOutput.fromJson(decoded);
+    final result = ContractOutput.fromJson(decoded);
+    return result;
   }
 
   Future<ContractOutput> getState({
-    required String contractVersion,
+    required String to,
     required String method,
-    required Map<String, dynamic> data,
+    required JsonMessage data,
   }) async {
     try {
-      // Build a transaction input without signature and hash
-      final txInput = {
-        'contract_version': contractVersion,
-        'method': method,
-        'data': data, // assuming Map<String, dynamic>
-      };
+    final txInput = {
+      'to': to,
+      'method': method,
+      'data': data,
+    };
 
-      // Make the request (this uses your existing MQTT plugin or handler)
-      final responseBytes = await sendTransaction(
-        REQUEST_METHOD_GET_STATE,
-        txInput,
-        _replyTo!,
-      );
+    final responseBytes = await sendTransaction(
+      REQUEST_METHOD_GET_STATE,
+      txInput,
+      _replyTo!,
+    );
 
-      // Decode JSON response
-      final Map<String, dynamic> contractOutputJson = json.decode(utf8.decode(responseBytes));
+    final dynamic decoded = json.decode(utf8.decode(responseBytes));
 
-      return ContractOutput.fromJson(contractOutputJson);
+    // ✅ caso normal: veio um objeto JSON (ContractOutput)
+    if (decoded is Map<String, dynamic>) {
+      return ContractOutput.fromJson(decoded);
+    }
+
+    // ✅ caso "not found": veio 0 (fallback)
+    if (decoded is int && decoded == 0) {
+      // escolha 1: retornar vazio com listas vazias (mais fácil pra teste)
+      return ContractOutput(states: const <StateType>[], logs: const <Log>[]);
+      // escolha 2 (se você preferir zero-value mesmo): return ContractOutput();
+    }
+
+    // ✅ caso "null" (se o Go realmente mandar null em algum cenário)
+    if (decoded == null) {
+      return ContractOutput();
+    }
+
+    throw Exception(
+      'unexpected getState response type: ${decoded.runtimeType}',
+    );
     } catch (e) {
       throw Exception('failed to get state: from getState function $e');
     }
   }
 
 
- Future<ContractOutput> deployContract(
-      String contractVersion, String contractAddress) async {
-        print("Deploying contract version: $contractVersion to address: $contractAddress");
-    final from = _activePublicKey!;
+  Future<ContractOutput> deployContract1(
+      String contractVersion) async {
+        print("Deploying contract version: $contractVersion");
+    
+    final chainID = _chainID;
+    final from = _publicKeyHex!;
     if (from.isEmpty) {
       throw Exception('from address is required');
     }
     
-    KeyManager.validateEdDSAPublicKey(from);
+    KeyManager.validateEDDSAPublicKeyHex(from);
     if (contractVersion.isEmpty) {
       throw Exception('contract version is required');
     }
     
     String to = DEPLOY_CONTRACT_ADDRESS;
-    if (contractAddress.isNotEmpty) {
-      to = contractAddress;
-    }
     
     final method = METHOD_DEPLOY_CONTRACT;
-    final data = <String, dynamic>{
+    final JsonMessage data = {
       'contract_version': contractVersion,
     };
+
+    final version = 1;
+    final uuid7 = newUUID7();
     
     try {
       final contractOutput = await signAndSendTransaction(
-          from: from, to: to, contractVersion: contractVersion, method: method, data: data);
+          chainID: chainID, from: from, to: to, method: method, data: data, version: version, uuid7: uuid7);
       return contractOutput;
     } catch (e) {
       throw Exception('failed to deploy contract: $e');
     }
   }
 
-  /// Retorna a chave privada ativa.
-  String? get activePrivateKey => _activePrivateKey;
 
-  /// Retorna a chave pública ativa.
-  String? get activePublicKey => _activePublicKey;
+ Future<ContractOutput> deployContract2(
+      String contractAddress, String contractVersion) async {
+        print("Deploying contract version: $contractVersion to address: $contractAddress");
+    
+    final chainID = _chainID;
+    final from = _publicKeyHex!;
+    if (from.isEmpty) {
+      throw Exception('from address is required');
+    }
+    
+    KeyManager.validateEDDSAPublicKeyHex(from);
+    if (contractVersion.isEmpty) {
+      throw Exception('contract version is required');
+    }
+    
+    String to = "";
+    if (contractAddress.isNotEmpty) {
+      to = contractAddress;
+    }
+    
+    final method = METHOD_DEPLOY_CONTRACT;
+    final JsonMessage data = {
+      'contract_version': contractVersion,
+    };
+
+    
+
+    final version = 1;
+    final uuid7 = newUUID7();
+    
+    try {
+      final contractOutput = await signAndSendTransaction(
+          chainID: chainID, from: from, to: to, method: method, data: data, version: version, uuid7: uuid7);
+      return contractOutput;
+    } catch (e) {
+      throw Exception('failed to deploy contract: $e');
+    }
+  }
 
 }
