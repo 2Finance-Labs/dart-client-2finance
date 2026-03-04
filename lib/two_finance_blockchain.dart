@@ -11,6 +11,8 @@ import 'package:uuid/uuid.dart';
 
 import 'package:two_finance_blockchain/blockchain/contract/constants.dart';
 import 'package:two_finance_blockchain/blockchain/contract/tokenV1/models/token.dart';
+import 'package:two_finance_blockchain/blockchain/contract/tokenV1/domain/token.dart';
+import 'package:two_finance_blockchain/blockchain/contract/tokenV1/domain/access_policy.dart';
 import 'package:two_finance_blockchain/blockchain/contract/walletV1/constants.dart';
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 import 'package:two_finance_blockchain/blockchain/transaction/transaction.dart';
@@ -186,10 +188,10 @@ class TwoFinanceBlockchain {
       txSigned,
       _replyTo!,
     );
-
     // Decode response
     final decoded = json.decode(utf8.decode(responseBytes));
-    return ContractOutput.fromJson(decoded);
+    final result = ContractOutput.fromJson(decoded);
+    return result;
   }
 
   Future<ContractOutput> getState({
@@ -238,7 +240,42 @@ class TwoFinanceBlockchain {
   }
 
 
- Future<ContractOutput> deployContract(
+  Future<ContractOutput> deployContract1(
+      String contractVersion) async {
+        print("Deploying contract version: $contractVersion");
+    
+    final chainID = _chainID;
+    final from = _publicKeyHex!;
+    if (from.isEmpty) {
+      throw Exception('from address is required');
+    }
+    
+    KeyManager.validateEDDSAPublicKeyHex(from);
+    if (contractVersion.isEmpty) {
+      throw Exception('contract version is required');
+    }
+    
+    String to = DEPLOY_CONTRACT_ADDRESS;
+    
+    final method = METHOD_DEPLOY_CONTRACT;
+    final JsonMessage data = {
+      'contract_version': contractVersion,
+    };
+
+    final version = 1;
+    final uuid7 = newUUID7();
+    
+    try {
+      final contractOutput = await signAndSendTransaction(
+          chainID: chainID, from: from, to: to, method: method, data: data, version: version, uuid7: uuid7);
+      return contractOutput;
+    } catch (e) {
+      throw Exception('failed to deploy contract: $e');
+    }
+  }
+
+
+ Future<ContractOutput> deployContract2(
       String contractAddress, String contractVersion) async {
         print("Deploying contract version: $contractVersion to address: $contractAddress");
     
@@ -253,7 +290,7 @@ class TwoFinanceBlockchain {
       throw Exception('contract version is required');
     }
     
-    String to = DEPLOY_CONTRACT_ADDRESS;
+    String to = "";
     if (contractAddress.isNotEmpty) {
       to = contractAddress;
     }

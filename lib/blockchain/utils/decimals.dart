@@ -1,10 +1,4 @@
-
-
-
-class DecimalRescaler {
-  /// Rescales a decimal string from `fromDecimals` to `toDecimals`.
-  /// Mimics the Go logic exactly.
-  static String rescaleString(String value, int fromDecimals, int toDecimals) {
+String rescaleDecimalString(String value, int fromDecimals, int toDecimals) {
     // Normalize decimal separator to dot
     value = value.replaceAll(',', '.');
 
@@ -53,6 +47,3 @@ class DecimalRescaler {
       return combined.substring(0, combined.length + diff);
     }
   }
-
-  
-}

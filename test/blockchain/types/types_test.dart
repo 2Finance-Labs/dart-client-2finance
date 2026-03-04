@@ -1,5 +1,7 @@
 import 'package:test/test.dart';
 import 'package:two_finance_blockchain/blockchain/types/types.dart';
+import 'package:two_finance_blockchain/blockchain/utils/marshal.dart';
+import 'dart:convert';
 
 void main() {
   group('StateType', () {
@@ -172,38 +174,40 @@ void main() {
     });
 
     test('logs: parses and serializes minimal log objects', () {
-        final input = {
-            'logs': [
-            {
-                'log_type': 'event',
-                'log_index': 1,
-                'transaction_hash': 'a' * 64,
-                'event': {'name': 'TestEvent', 'value': 123},
-                'contract_version': 'v1',
-                'contract_address': DEPLOY_CONTRACT_ADDRESS,
-                'created_at': DateTime.utc(2026, 1, 1).toIso8601String(),
-            }
-            ]
-        };
+      final eventMap = {'name': 'TestEvent', 'value': 123};
+      final eventBase64 = base64Encode(utf8.encode(jsonEncode(eventMap)));
 
-        final out = ContractOutput.fromJson(input);
+      final input = {
+        'logs': [
+          {
+            'log_type': 'event',
+            'log_index': 1,
+            'transaction_hash': 'a' * 64,
+            'event': eventBase64,
+            'contract_version': 'v1',
+            'contract_address': DEPLOY_CONTRACT_ADDRESS,
+          }
+        ]
+      };
 
-        expect(out.logs, isNotNull);
-        expect(out.logs!.length, 1);
+      final out = ContractOutput.fromJson(input);
 
-        // garante que Log foi parseado corretamente
-        final log = out.logs!.first;
-        expect(log.logType, 'event');
-        expect(log.logIndex, 1);
-        expect(log.transactionHash, 'a' * 64);
-        expect(log.contractVersion, 'v1');
-        expect(log.contractAddress, DEPLOY_CONTRACT_ADDRESS);
-        expect(log.event, {'name': 'TestEvent', 'value': 123});
+      expect(out.logs, isNotNull);
+      expect(out.logs!.length, 1);
 
-        // roundtrip
-        final json = out.toJson();
-        expect(json, input);
-        });
+      final log = out.logs!.first;
+      expect(log.logType, 'event');
+      expect(log.logIndex, 1);
+      expect(log.transactionHash, 'a' * 64);
+      expect(log.contractVersion, 'v1');
+      expect(log.contractAddress, DEPLOY_CONTRACT_ADDRESS);
+      expect(log.event, eventBase64);
+      final decoded = unmarshalEvent<Map<String, dynamic>>(log.event, (m) => m);
+      expect(decoded['name'], equals('TestEvent'));
+      expect(decoded['value'], equals(123));
+      final json = out.toJson();
+      expect(json, input);
+    });
 
   });
 }

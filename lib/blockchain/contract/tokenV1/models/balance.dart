@@ -1,4 +1,4 @@
-class BalanceStateModel {
+class BalanceState {
   final int? id;
   final String? tokenAddress;
   final String? ownerAddress;
@@ -7,7 +7,7 @@ class BalanceStateModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
-  const BalanceStateModel({
+  const BalanceState({
     this.id,
     this.tokenAddress,
     this.ownerAddress,
@@ -16,7 +16,7 @@ class BalanceStateModel {
     this.updatedAt,
   });
 
-  factory BalanceStateModel.fromJson(Map<String, dynamic> json) {
+  factory BalanceState.fromJson(Map<String, dynamic> json) {
     int? _parseInt(dynamic v) {
       if (v is int) return v;
       if (v is String) return int.tryParse(v);
@@ -28,11 +28,11 @@ class BalanceStateModel {
       return null;
     }
 
-    return BalanceStateModel(
+    return BalanceState(
       id: _parseInt(json['id']),
-      tokenAddress: json['token_address'] as String?,
-      ownerAddress: json['owner_address'] as String?,
-      amount: json['amount'] as String?,
+      tokenAddress: json['token_address'] as String,
+      ownerAddress: json['owner_address'] as String,
+      amount: json['amount'] as String,
       createdAt: _parseDate(json['created_at']),
       updatedAt: _parseDate(json['updated_at']),
     );

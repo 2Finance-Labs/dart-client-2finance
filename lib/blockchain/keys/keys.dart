@@ -68,4 +68,5 @@ class KeyManager {
           throw FormatException('Invalid public key: all bytes are zero.');
       }
   }
+
 }
