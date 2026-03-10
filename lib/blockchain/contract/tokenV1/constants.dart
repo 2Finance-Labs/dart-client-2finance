@@ -18,9 +18,9 @@ const String METHOD_REVOKE_MINT_AUTHORITY = "revoke_mint_authority";
 const String METHOD_REVOKE_UPDATE_AUTHORITY = "revoke_update_authority";
 
 const String METHOD_UPDATE_METADATA = "update_metadata";
-const String METHOD_PAUSE_TOKEN = "pause_token";
-const String METHOD_UNPAUSE_TOKEN = "unpause_token";
-const String METHOD_UPDATE_FEE_TIERS = "update_fee_tiers";
+const String METHOD_PAUSE_TOKEN = "pause_Token";
+const String METHOD_UNPAUSE_TOKEN = "unpause_Token";
+const String METHOD_UPDATE_FEE_TIERS = "update_FeeTiers";
 const String METHOD_UPDATE_FEE_ADDRESS = "update_fee_address";
 const String METHOD_UPDATE_GLB_FILE = "update_glb_file";
 const String METHOD_TRANSFERABLE_TOKEN = "transferable_token";
