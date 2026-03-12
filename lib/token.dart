@@ -70,7 +70,8 @@ extension Token on TwoFinanceBlockchain {
       "tags": tags,
       "creator": creator,
       "creator_website": creatorWebsite,
-      "access_policy": accessPolicy.toJson(),
+      "access_mode": accessPolicy.mode,
+      "access_users": accessPolicy.users,
       "frozen_accounts": frozenAccounts,
       "freeze_authority_revoked": freezeAuthorityRevoked,
       "mint_authority_revoked": mintAuthorityRevoked,
@@ -243,8 +244,11 @@ extension Token on TwoFinanceBlockchain {
       chainID: _chainID,
       from: from,
       to: tokenAddress,
-      method: METHOD_ALLOW_USERS,
-      data: {"users": users},
+      method: METHOD_ADD_ACCESS_USERS,
+      data: {
+        "access_mode": "ALLOW_ACCESS_MODE",
+        "access_users": users,
+      },
       version: version,
       uuid7: uuid7,
     );
@@ -266,8 +270,11 @@ extension Token on TwoFinanceBlockchain {
       chainID: _chainID,
       from: from,
       to: tokenAddress,
-      method: METHOD_DISALLOW_USERS,
-      data: {"users": users},
+      method: METHOD_REMOVE_ACCESS_USERS,
+      data: {
+        "access_mode": "ALLOW_ACCESS_MODE",
+        "access_users": users,
+      },
       version: version,
       uuid7: uuid7,
     );
@@ -289,8 +296,11 @@ extension Token on TwoFinanceBlockchain {
       chainID: _chainID,
       from: from,
       to: tokenAddress,
-      method: METHOD_BLOCK_USERS,
-      data: {"users": users},
+      method: METHOD_ADD_ACCESS_USERS,
+      data: {
+        "access_mode": "DENY_ACCESS_MODE",
+        "access_users": users,
+      },
       version: version,
       uuid7: uuid7,
     );
@@ -312,8 +322,35 @@ extension Token on TwoFinanceBlockchain {
       chainID: _chainID,
       from: from,
       to: tokenAddress,
-      method: METHOD_UNBLOCK_USERS,
-      data: {"users": users},
+      method: METHOD_REMOVE_ACCESS_USERS,
+      data: {
+        "access_mode": "DENY_ACCESS_MODE",
+        "access_users": users,
+      },
+      version: version,
+      uuid7: uuid7,
+    );
+  }
+
+  Future<ContractOutput> changeAccessMode(String tokenAddress, String accessMode) async {
+    final from = publicKeyHex ?? '';
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+    if (accessMode.isEmpty) throw ArgumentError('access mode not set');
+
+    KeyManager.validateEDDSAPublicKeyHex(from);
+    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+
+    final uuid7 = newUUID7();
+    const int version = 1;
+
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: tokenAddress,
+      method: METHOD_CHANGE_ACCESS_MODE,
+      data: {
+        "access_mode": accessMode,
+      },
       version: version,
       uuid7: uuid7,
     );
