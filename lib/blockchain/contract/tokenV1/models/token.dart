@@ -103,8 +103,17 @@ class TokenState {
       creator: json['creator'] as String?,
       creatorWebsite: json['creator_website'] as String?,
       accessPolicy: json['access_policy'] != null
-          ? AccessPolicy.fromJson(json['access_policy'] as Map<String, dynamic>)
-          : null,
+    ? AccessPolicy.fromJson(
+        Map<String, dynamic>.from(json['access_policy'] as Map),
+      )
+    : ((json['access_mode'] != null || json['access_users'] != null)
+        ? AccessPolicy(
+            mode: json['access_mode']?.toString() ?? '',
+            users: Map<String, bool>.from(
+              (json['access_users'] as Map?) ?? const {},
+            ),
+          )
+        : null),
       frozenAccounts: (json['frozen_accounts'] as Map<String, dynamic>?)
           ?.map((k, v) => MapEntry(k, v as bool)),
       freezeAuthorityRevoked: json['freeze_authority_revoked'] as bool?,

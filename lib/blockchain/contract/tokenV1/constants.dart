@@ -8,21 +8,21 @@ const String METHOD_MINT_TOKEN = "mint_Token";
 const String METHOD_BURN_TOKEN = "burn_Token";
 const String METHOD_TRANSFER_TOKEN = "transfer_Token";
 
-const String METHOD_ALLOW_USERS = "allow_users";
-const String METHOD_DISALLOW_USERS = "disallow_users";
-const String METHOD_BLOCK_USERS = "block_users";
-const String METHOD_UNBLOCK_USERS = "unblock_users";
+const String METHOD_ADD_ACCESS_USERS = "add_Access_Users";
+const String METHOD_REMOVE_ACCESS_USERS = "remove_Access_Users";
+const String METHOD_CHANGE_ACCESS_MODE = "change_Access_Mode";
 
-const String METHOD_REVOKE_FREEZE_AUTHORITY = "revoke_freeze_authority";
-const String METHOD_REVOKE_MINT_AUTHORITY = "revoke_mint_authority";
-const String METHOD_REVOKE_UPDATE_AUTHORITY = "revoke_update_authority";
 
-const String METHOD_UPDATE_METADATA = "update_metadata";
+const String METHOD_REVOKE_FREEZE_AUTHORITY = "revoke_FreezeAuthority";
+const String METHOD_REVOKE_MINT_AUTHORITY = "revoke_MintAuthority";
+const String METHOD_REVOKE_UPDATE_AUTHORITY = "revoke_UpdateAuthority";
+
+const String METHOD_UPDATE_METADATA = "update_Metadata";
 const String METHOD_PAUSE_TOKEN = "pause_Token";
 const String METHOD_UNPAUSE_TOKEN = "unpause_Token";
 const String METHOD_UPDATE_FEE_TIERS = "update_FeeTiers";
-const String METHOD_UPDATE_FEE_ADDRESS = "update_fee_address";
-const String METHOD_UPDATE_GLB_FILE = "update_glb_file";
+const String METHOD_UPDATE_FEE_ADDRESS = "update_FeeAddress";
+const String METHOD_UPDATE_GLB_FILE = "update_GLB_File";
 const String METHOD_TRANSFERABLE_TOKEN = "transferable_token";
 const String METHOD_UNTRANSFERABLE_TOKEN = "untransferable_token";
 

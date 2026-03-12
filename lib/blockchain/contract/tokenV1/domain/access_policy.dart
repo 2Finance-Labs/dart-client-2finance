@@ -1,6 +1,6 @@
 class AccessPolicy {
-  static const String allow = "ALLOW";
-  static const String deny = "DENY";
+  static const String allow = "ALLOW_ACCESS_MODE";
+  static const String deny = "DENY_ACCESS_MODE";
 
   final Map<String, bool> users;
   final String mode;
@@ -8,9 +8,14 @@ class AccessPolicy {
   AccessPolicy({
     required this.users,
     required this.mode,
-  }) : assert(mode == allow || mode == deny, 'mode must be ALLOW or DENY') {
+  }) : assert(
+          mode == allow || mode == deny,
+          'mode must be ALLOW_ACCESS_MODE or DENY_ACCESS_MODE',
+        ) {
     if (mode != allow && mode != deny) {
-      throw ArgumentError('mode must be ALLOW or DENY');
+      throw ArgumentError(
+        'mode must be ALLOW_ACCESS_MODE or DENY_ACCESS_MODE',
+      );
     }
   }
 
@@ -23,7 +28,9 @@ class AccessPolicy {
     final mode = json['mode'] as String?;
 
     if (mode != allow && mode != deny) {
-      throw ArgumentError('mode must be ALLOW or DENY');
+      throw ArgumentError(
+        'mode must be ALLOW_ACCESS_MODE or DENY_ACCESS_MODE',
+      );
     }
 
     final rawUsers = json['users'];

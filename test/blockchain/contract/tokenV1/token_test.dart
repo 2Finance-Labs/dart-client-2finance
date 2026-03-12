@@ -61,7 +61,10 @@ void main() {
          tags: {"k": "v"},
          creator: "Name of creator",
          creatorWebsite: "https://creator.example.com",
-         accessPolicy: AccessPolicy(users: {owner: true}, mode: "ALLOW"),
+         accessPolicy: AccessPolicy(
+          users: {},
+          mode: "DENY_ACCESS_MODE",
+        ),
          frozenAccounts: {frozenAcc.publicKey: true},
          feeTiersList: const <Map<String, dynamic>>[
            {
@@ -86,6 +89,7 @@ void main() {
 
         final tokenAddress = addr;
         final outGet = await c.getToken(tokenAddress: tokenAddress);
+
         expect(outGet.states, isNotNull);
         expect(outGet.states!, isNotEmpty);
 
@@ -132,8 +136,8 @@ void main() {
        expect(tokenState.frozenAccounts, isNotNull);
        expect(tokenState.frozenAccounts, equals({frozenAcc.publicKey: true}));
        expect(tokenState.accessPolicy, isNotNull);
-       expect(tokenState.accessPolicy!.users, equals({owner: true}));
-       expect(tokenState.accessPolicy!.mode, equals("ALLOW"));
+       expect(tokenState.accessPolicy!.users, isEmpty);
+       expect(tokenState.accessPolicy!.mode, equals("DENY_ACCESS_MODE"));
        expect(tokenState.feeTiersList, isNotNull);
        expect(tokenState.feeTiersList, equals([
          FeeTier(
@@ -149,7 +153,9 @@ void main() {
        expect(tokenState.mintAuthorityRevoked, isFalse);
        expect(tokenState.updateAuthorityRevoked, isFalse);
        expect(tokenState.paused, isFalse);
-       expect(tokenState.expiredAt, equals(expiredAt));
+       expect(tokenState.expiredAt, isNotNull);
+       expect(tokenState.expiredAt!.toUtc().toIso8601String(),
+            equals(expiredAt.toUtc().toIso8601String()));
        expect(tokenState.assetGlbUri, equals("https://example.com/asset.glb"));
        expect(tokenState.tokenType, equals(TOKEN_TYPE_FUNGIBLE));
        expect(tokenState.transferable, isTrue);
@@ -270,6 +276,7 @@ void main() {
       expect(listedToken!.name, equals("Test Token"));
       expect(listedToken!.tokenType, equals(TOKEN_TYPE_FUNGIBLE));
 
+        // // Mint
 
        final outMint = await c.mintToken(
          tokenAddress: tokenAddress,
@@ -348,7 +355,329 @@ void main() {
       expect(listedBalance!.ownerAddress, equals(owner));
       expect(listedBalance!.amount, isNotNull);
       expect(int.parse(listedBalance!.amount!), int.parse("1150"));
-      
+
+
+        // ------------------
+        //        BURN
+        // ------------------
+      //   final outBurn = await c.burnToken(
+      //     tokenAddress: tokenAddress,
+      //     amount: "0.25",
+      //     decimals: 2,
+      //     tokenType: TOKEN_TYPE_FUNGIBLE,
+      //     uuid: "",
+      //   );
+
+      //   expect(outBurn, isA<ContractOutput>());
+      //   expect(outBurn.logs, isNotNull);
+      //   expect(outBurn.logs!, isNotEmpty);
+
+        // saldo do owner depois do burn
+      //   final outBalAfterBurn = await c.getTokenBalance(
+      //     tokenAddress: tokenAddress,
+      //    ownerAddress: owner,
+      //   );
+      //  expect(outBalAfterBurn.states, isNotNull);
+      //   expect(outBalAfterBurn.states!, isNotEmpty);
+
+      //   final balAfterBurn = unmarshalState(
+      //     outBalAfterBurn.states!.first.object,
+      //     (json) => BalanceState.fromJson(json),
+      //   );
+
+      //   expect(balAfterBurn.ownerAddress, equals(owner));
+      //   expect(balAfterBurn.tokenAddress, equals(tokenAddress));
+      //   expect(balAfterBurn.amount, isNotNull);
+      //   expect(int.parse(balAfterBurn.amount!), equals(1125));
+
+        
+        
+
+        // ------------------
+        // CHANGE ACCESS MODE
+        // ------------------
+        final outChangeAccessModeToAllow = await c.changeAccessMode(
+          tokenAddress,
+          'ALLOW_ACCESS_MODE',
+        );
+
+        expect(outChangeAccessModeToAllow, isA<ContractOutput>());
+        expect(outChangeAccessModeToAllow.logs, isNotNull);
+        expect(outChangeAccessModeToAllow.logs!, isNotEmpty);
+
+        final changeAccessToAllowLog = outChangeAccessModeToAllow.logs!.first;
+        expect(changeAccessToAllowLog.contractAddress, equals(tokenAddress));
+        expect(changeAccessToAllowLog.logType, equals('Token_AccessModeChanged'));
+
+        final changeAccessToAllowEvent = jsonDecode(
+          utf8.decode(base64Decode(changeAccessToAllowLog.event)),
+        ) as Map<String, dynamic>;
+
+        expect(changeAccessToAllowEvent['address'], equals(tokenAddress));
+        expect(changeAccessToAllowEvent['access_mode'], equals('ALLOW_ACCESS_MODE'));
+
+        final outGetAfterChangeAccessModeToAllow = await c.getToken(
+          tokenAddress: tokenAddress,
+        );
+        expect(outGetAfterChangeAccessModeToAllow.states, isNotNull);
+        expect(outGetAfterChangeAccessModeToAllow.states!, isNotEmpty);
+
+        final tokenStateAfterChangeAccessModeToAllow = unmarshalState(
+          outGetAfterChangeAccessModeToAllow.states!.first.object,
+          (json) => TokenState.fromJson(json),
+        );
+
+        expect(tokenStateAfterChangeAccessModeToAllow.address, equals(tokenAddress));
+        expect(tokenStateAfterChangeAccessModeToAllow.accessPolicy, isNotNull);
+        expect(
+          tokenStateAfterChangeAccessModeToAllow.accessPolicy!.mode,
+          equals('ALLOW_ACCESS_MODE'),
+        );
+        expect(
+          tokenStateAfterChangeAccessModeToAllow.accessPolicy!.users,
+          isEmpty,
+        );
+
+
+
+        // ------------------
+        //    ALLOW USERS
+        // ------------------
+        final receiverKp = await validKeyPair();
+        final receiver = receiverKp.publicKey;
+
+        final outAllowUsers = await c.allowUsers(
+          tokenAddress,
+          {receiver: true},
+        );
+
+        expect(outAllowUsers, isA<ContractOutput>());
+        expect(outAllowUsers.logs, isNotNull);
+        expect(outAllowUsers.logs!, isNotEmpty);
+
+        final allowLog = outAllowUsers.logs!.first;
+        expect(allowLog.contractAddress, equals(tokenAddress));
+        expect(allowLog.logType, equals('Token_UsersAdded'));
+
+        final allowEvent = jsonDecode(
+          utf8.decode(base64Decode(allowLog.event)),
+        ) as Map<String, dynamic>;
+
+        expect(allowEvent['address'], equals(tokenAddress));
+        expect(allowEvent['access_mode'], equals('ALLOW_ACCESS_MODE'));
+
+        final allowUsersMap = Map<String, dynamic>.from(
+          allowEvent['access_users'] as Map,
+        );
+
+        expect(allowUsersMap[receiver], isTrue);
+
+        final outGetAfterAllow = await c.getToken(tokenAddress: tokenAddress);
+        expect(outGetAfterAllow.states, isNotNull);
+        expect(outGetAfterAllow.states!, isNotEmpty);
+
+        final tokenStateAfterAllow = unmarshalState(
+          outGetAfterAllow.states!.first.object,
+          (json) => TokenState.fromJson(json),
+        );
+
+        expect(tokenStateAfterAllow.address, equals(tokenAddress));
+        expect(tokenStateAfterAllow.accessPolicy, isNotNull);
+        expect(tokenStateAfterAllow.accessPolicy!.mode, equals('ALLOW_ACCESS_MODE'));
+        expect(tokenStateAfterAllow.accessPolicy!.users[receiver], isTrue);
+
+
+        // ------------------
+        // REMOVE ALLOW USERS
+        // ------------------
+        final outRemoveAllowUsers = await c.disallowUsers(
+          tokenAddress,
+          {receiver: true},
+        );
+
+        expect(outRemoveAllowUsers, isA<ContractOutput>());
+        expect(outRemoveAllowUsers.logs, isNotNull);
+        expect(outRemoveAllowUsers.logs!, isNotEmpty);
+
+        final removeAllowLog = outRemoveAllowUsers.logs!.first;
+        expect(removeAllowLog.contractAddress, equals(tokenAddress));
+        expect(removeAllowLog.logType, equals('Token_UsersRemoved'));
+
+        final removeAllowEvent = jsonDecode(
+          utf8.decode(base64Decode(removeAllowLog.event)),
+        ) as Map<String, dynamic>;
+
+        expect(removeAllowEvent['address'], equals(tokenAddress));
+        expect(removeAllowEvent['access_mode'], equals('ALLOW_ACCESS_MODE'));
+
+        final removeAllowUsersMap = Map<String, dynamic>.from(
+          removeAllowEvent['access_users'] as Map,
+        );
+
+        expect(removeAllowUsersMap.containsKey(receiver), isTrue);
+        expect(removeAllowUsersMap[receiver], isTrue);
+
+        final outGetAfterRemoveAllow = await c.getToken(tokenAddress: tokenAddress);
+        expect(outGetAfterRemoveAllow.states, isNotNull);
+        expect(outGetAfterRemoveAllow.states!, isNotEmpty);
+
+        final tokenStateAfterRemoveAllow = unmarshalState(
+          outGetAfterRemoveAllow.states!.first.object,
+          (json) => TokenState.fromJson(json),
+        );
+
+        expect(tokenStateAfterRemoveAllow.address, equals(tokenAddress));
+        expect(tokenStateAfterRemoveAllow.accessPolicy, isNotNull);
+        expect(
+          tokenStateAfterRemoveAllow.accessPolicy!.mode,
+          equals('ALLOW_ACCESS_MODE'),
+        );
+        expect(
+          tokenStateAfterRemoveAllow.accessPolicy!.users.containsKey(receiver),
+          isFalse,
+        );
+        
+
+        // ------------------
+        // CHANGE ACCESS MODE
+        // ------------------
+        final outChangeAccessMode = await c.changeAccessMode(
+          tokenAddress,
+          'DENY_ACCESS_MODE',
+        );
+
+        expect(outChangeAccessMode, isA<ContractOutput>());
+        expect(outChangeAccessMode.logs, isNotNull);
+        expect(outChangeAccessMode.logs!, isNotEmpty);
+
+        final changeAccessLog = outChangeAccessMode.logs!.first;
+        expect(changeAccessLog.contractAddress, equals(tokenAddress));
+        expect(changeAccessLog.logType, equals('Token_AccessModeChanged'));
+
+        final changeAccessEvent = jsonDecode(
+          utf8.decode(base64Decode(changeAccessLog.event)),
+        ) as Map<String, dynamic>;
+
+        expect(changeAccessEvent['address'], equals(tokenAddress));
+        expect(changeAccessEvent['access_mode'], equals('DENY_ACCESS_MODE'));
+
+        final outGetAfterChangeAccessMode = await c.getToken(
+          tokenAddress: tokenAddress,
+        );
+
+        expect(outGetAfterChangeAccessMode.states, isNotNull);
+        expect(outGetAfterChangeAccessMode.states!, isNotEmpty);
+
+        final tokenStateAfterChangeAccessMode = unmarshalState(
+          outGetAfterChangeAccessMode.states!.first.object,
+          (json) => TokenState.fromJson(json),
+        );
+
+        expect(tokenStateAfterChangeAccessMode.address, equals(tokenAddress));
+        expect(tokenStateAfterChangeAccessMode.accessPolicy, isNotNull);
+        expect(
+          tokenStateAfterChangeAccessMode.accessPolicy!.mode,
+          equals('DENY_ACCESS_MODE'),
+        );
+
+        // ------------------
+        //    DENY USERS
+        // ------------------
+        final outBlockUsers = await c.blockUsers(
+          tokenAddress,
+          {receiver: true},
+        );
+
+        expect(outBlockUsers, isA<ContractOutput>());
+        expect(outBlockUsers.logs, isNotNull);
+        expect(outBlockUsers.logs!, isNotEmpty);
+
+        final blockLog = outBlockUsers.logs!.first;
+        expect(blockLog.contractAddress, equals(tokenAddress));
+        expect(blockLog.logType, equals('Token_UsersAdded'));
+
+        final blockEvent = jsonDecode(
+          utf8.decode(base64Decode(blockLog.event)),
+        ) as Map<String, dynamic>;
+
+        expect(blockEvent['address'], equals(tokenAddress));
+        expect(blockEvent['access_mode'], equals('DENY_ACCESS_MODE'));
+
+        final blockUsersMap = Map<String, dynamic>.from(
+          blockEvent['access_users'] as Map,
+        );
+
+        expect(blockUsersMap[receiver], isTrue);
+
+        final outGetAfterBlock = await c.getToken(tokenAddress: tokenAddress);
+        expect(outGetAfterBlock.states, isNotNull);
+        expect(outGetAfterBlock.states!, isNotEmpty);
+
+        final tokenStateAfterBlock = unmarshalState(
+          outGetAfterBlock.states!.first.object,
+          (json) => TokenState.fromJson(json),
+        );
+
+        expect(tokenStateAfterBlock.address, equals(tokenAddress));
+        expect(tokenStateAfterBlock.accessPolicy, isNotNull);
+        expect(
+          tokenStateAfterBlock.accessPolicy!.mode,
+          equals('DENY_ACCESS_MODE'),
+        );
+        expect(tokenStateAfterBlock.accessPolicy!.users[receiver], isTrue);
+
+
+        // ------------------
+        // REMOVE DENY USERS
+        // ------------------
+        final outUnblockUsers = await c.unblockUsers(
+          tokenAddress,
+          {receiver: true},
+        );
+
+        expect(outUnblockUsers, isA<ContractOutput>());
+        expect(outUnblockUsers.logs, isNotNull);
+        expect(outUnblockUsers.logs!, isNotEmpty);
+
+        final unblockLog = outUnblockUsers.logs!.first;
+        expect(unblockLog.contractAddress, equals(tokenAddress));
+        expect(unblockLog.logType, equals('Token_UsersRemoved'));
+
+        final unblockEvent = jsonDecode(
+          utf8.decode(base64Decode(unblockLog.event)),
+        ) as Map<String, dynamic>;
+
+        expect(unblockEvent['address'], equals(tokenAddress));
+        expect(unblockEvent['access_mode'], equals('DENY_ACCESS_MODE'));
+
+        final unblockUsersMap = Map<String, dynamic>.from(
+          unblockEvent['access_users'] as Map,
+        );
+
+        expect(unblockUsersMap.containsKey(receiver), isTrue);
+        expect(unblockUsersMap[receiver], isTrue);
+
+        final outGetAfterUnblock = await c.getToken(tokenAddress: tokenAddress);
+        expect(outGetAfterUnblock.states, isNotNull);
+        expect(outGetAfterUnblock.states!, isNotEmpty);
+
+        final tokenStateAfterUnblock = unmarshalState(
+          outGetAfterUnblock.states!.first.object,
+          (json) => TokenState.fromJson(json),
+        );
+
+        expect(tokenStateAfterUnblock.address, equals(tokenAddress));
+        expect(tokenStateAfterUnblock.accessPolicy, isNotNull);
+        expect(
+          tokenStateAfterUnblock.accessPolicy!.mode,
+          equals('DENY_ACCESS_MODE'),
+        );
+        expect(
+          tokenStateAfterUnblock.accessPolicy!.users.containsKey(receiver),
+          isFalse,
+        );
+
+
         // ------------------
         //       PAUSE
         // ------------------
@@ -435,12 +764,14 @@ void main() {
         expect(updateFeeTiersLog.contractAddress, equals(tokenAddress));
 
         final updateFeeTiersEvent = jsonDecode(
-          utf8.decode(base64Decode(updateFeeTiersLog.event)),
+        utf8.decode(base64Decode(updateFeeTiersLog.event)),
         ) as Map<String, dynamic>;
 
         expect(updateFeeTiersEvent['fee_tiers_list'], isA<List>());
-        final feeTiersEventList =
-            List<Map<String, dynamic>>.from(updateFeeTiersEvent['fee_tiers_list']);
+
+        final feeTiersEventList = List<Map<String, dynamic>>.from(
+        updateFeeTiersEvent['fee_tiers_list'] as List,
+        );
 
         expect(feeTiersEventList, hasLength(1));
 
@@ -470,6 +801,260 @@ void main() {
         expect(updatedFeeTier.min_volume, equals("0"));
         expect(updatedFeeTier.max_volume, equals("300000"));
         expect(updatedFeeTier.fee_bps, equals(75));
+
+
+        // ------------------
+        //   UPDATE FEE ADDRESS
+        // ------------------
+        final newFeeKp = await validKeyPair();
+        final newFeeAddress = newFeeKp.publicKey;
+
+        final outUpdateFeeAddress = await c.updateFeeAddress(
+          tokenAddress,
+          newFeeAddress,
+        );
+
+        expect(outUpdateFeeAddress, isA<ContractOutput>());
+        expect(outUpdateFeeAddress.logs, isNotNull);
+        expect(outUpdateFeeAddress.logs!, isNotEmpty);
+
+        final outGetUpdatedFeeAddress = await c.getToken(
+          tokenAddress: tokenAddress,
+        );
+
+        expect(outGetUpdatedFeeAddress.states, isNotNull);
+        expect(outGetUpdatedFeeAddress.states!, isNotEmpty);
+
+        final updatedFeeAddressTokenState = unmarshalState(
+          outGetUpdatedFeeAddress.states!.first.object,
+          (json) => TokenState.fromJson(json),
+        );
+
+        expect(updatedFeeAddressTokenState.address, equals(tokenAddress));
+        expect(
+          updatedFeeAddressTokenState.feeAddress,
+          equals(newFeeAddress),
+        );
+
+
+        // ------------------
+        //   UPDATE METADATA
+        // ------------------
+        final newSymbol = "2FNEW_${generateRandomSuffix(4)}";
+
+        final outUpdateMetadata = await c.updateMetadata(
+          tokenAddress: tokenAddress,
+          symbol: newSymbol,
+          name: "2Finance New",
+          decimals: 2,
+          description: "Updated by tests",
+          image: "https://example.com/img.png",
+          website: "https://example.com",
+          tagsSocialMedia: {"twitter": "https://x.com/2f"},
+          tagsCategory: {"category": "DeFi"},
+          tags: {"tag1": "e2e"},
+          creator: "Name of creator",
+          creatorWebsite: "https://creator",
+          expiredAt: DateTime.now().toUtc().add(const Duration(days: 30)),
+        );
+
+        expect(outUpdateMetadata, isA<ContractOutput>());
+        expect(outUpdateMetadata.logs, isNotNull);
+        expect(outUpdateMetadata.logs!, isNotEmpty);
+
+        final outGetUpdatedMetadata = await c.getToken(
+          tokenAddress: tokenAddress,
+        );
+
+        expect(outGetUpdatedMetadata.states, isNotNull);
+        expect(outGetUpdatedMetadata.states!, isNotEmpty);
+
+        final updatedMetadataTokenState = unmarshalState(
+          outGetUpdatedMetadata.states!.first.object,
+          (json) => TokenState.fromJson(json),
+        );
+
+        expect(updatedMetadataTokenState.address, equals(tokenAddress));
+        expect(updatedMetadataTokenState.symbol, equals(newSymbol));
+        expect(updatedMetadataTokenState.name, equals("2Finance New"));
+        expect(updatedMetadataTokenState.decimals, equals(2));
+        expect(
+          updatedMetadataTokenState.description,
+          equals("Updated by tests"),
+        );
+        expect(
+          updatedMetadataTokenState.image,
+          equals("https://example.com/img.png"),
+        );
+        expect(
+          updatedMetadataTokenState.website,
+          equals("https://example.com"),
+        );
+        expect(
+          updatedMetadataTokenState.tagsSocialMedia,
+          equals({"twitter": "https://x.com/2f"}),
+        );
+        expect(
+          updatedMetadataTokenState.tagsCategory,
+          equals({"category": "DeFi"}),
+        );
+        expect(
+          updatedMetadataTokenState.tags,
+          equals({"tag1": "e2e"}),
+        );
+        expect(
+          updatedMetadataTokenState.creator,
+          equals("Name of creator"),
+        );
+        expect(
+          updatedMetadataTokenState.creatorWebsite,
+          equals("https://creator"),
+        );
+
+
+        // ------------------
+        //    UPDATE GLB FILE
+        // ------------------
+        final newGlbUri = "https://example.com/updated-asset.glb";
+
+        final outUpdateGlbFile = await c.updateGlbFile(
+          tokenAddress,
+          newGlbUri,
+        );
+
+        expect(outUpdateGlbFile, isA<ContractOutput>());
+        expect(outUpdateGlbFile.logs, isNotNull);
+        expect(outUpdateGlbFile.logs!, isNotEmpty);
+
+        final outGetUpdatedGlb = await c.getToken(
+          tokenAddress: tokenAddress,
+        );
+
+        expect(outGetUpdatedGlb.states, isNotNull);
+        expect(outGetUpdatedGlb.states!, isNotEmpty);
+
+        final updatedGlbTokenState = unmarshalState(
+          outGetUpdatedGlb.states!.first.object,
+          (json) => TokenState.fromJson(json),
+        );
+
+        expect(updatedGlbTokenState.address, equals(tokenAddress));
+        expect(updatedGlbTokenState.assetGlbUri, equals(newGlbUri));
+
+
+
+        // ------------------
+        // REVOKE AUTHORITY
+        // ------------------
+
+        // Revoke freeze authority
+        final outRevokeFreezeAuthority = await c.revokeFreezeAuthority(
+          tokenAddress,
+          true,
+        );
+
+        expect(outRevokeFreezeAuthority, isA<ContractOutput>());
+        expect(outRevokeFreezeAuthority.logs, isNotNull);
+        expect(outRevokeFreezeAuthority.logs!, isNotEmpty);
+
+        final revokeFreezeLog = outRevokeFreezeAuthority.logs!.first;
+        // Ajuste a string se o backend retornar outro nome exato
+        expect(revokeFreezeLog.logType, equals('Token_FreezeAuthorityRevoked'));
+        expect(revokeFreezeLog.contractAddress, equals(tokenAddress));
+
+        final revokeFreezeEvent = jsonDecode(
+          utf8.decode(base64Decode(revokeFreezeLog.event)),
+        ) as Map<String, dynamic>;
+
+        expect(revokeFreezeEvent['address'], equals(tokenAddress));
+        expect(revokeFreezeEvent['freeze_authority_revoked'], isTrue);
+
+        final outGetAfterRevokeFreeze = await c.getToken(
+          tokenAddress: tokenAddress,
+        );
+
+        expect(outGetAfterRevokeFreeze.states, isNotNull);
+        expect(outGetAfterRevokeFreeze.states!, isNotEmpty);
+
+        final tokenStateAfterRevokeFreeze = unmarshalState(
+          outGetAfterRevokeFreeze.states!.first.object,
+          (json) => TokenState.fromJson(json),
+        );
+
+        expect(tokenStateAfterRevokeFreeze.address, equals(tokenAddress));
+        expect(tokenStateAfterRevokeFreeze.freezeAuthorityRevoked, isTrue);
+
+        // Revoke mint authority
+        final outRevokeMintAuthority = await c.revokeMintAuthority(
+          tokenAddress,
+          true,
+        );
+
+        expect(outRevokeMintAuthority, isA<ContractOutput>());
+        expect(outRevokeMintAuthority.logs, isNotNull);
+        expect(outRevokeMintAuthority.logs!, isNotEmpty);
+
+        final revokeMintLog = outRevokeMintAuthority.logs!.first;
+        expect(revokeMintLog.logType, equals('Token_MintAuthorityRevoked'));
+        expect(revokeMintLog.contractAddress, equals(tokenAddress));
+
+        final revokeMintEvent = jsonDecode(
+          utf8.decode(base64Decode(revokeMintLog.event)),
+        ) as Map<String, dynamic>;
+
+        expect(revokeMintEvent['address'], equals(tokenAddress));
+        expect(revokeMintEvent['mint_authority_revoked'], isTrue);
+
+        final outGetAfterRevokeMint = await c.getToken(
+          tokenAddress: tokenAddress,
+        );
+
+        expect(outGetAfterRevokeMint.states, isNotNull);
+        expect(outGetAfterRevokeMint.states!, isNotEmpty);
+
+        final tokenStateAfterRevokeMint = unmarshalState(
+          outGetAfterRevokeMint.states!.first.object,
+          (json) => TokenState.fromJson(json),
+        );
+
+        expect(tokenStateAfterRevokeMint.address, equals(tokenAddress));
+        expect(tokenStateAfterRevokeMint.mintAuthorityRevoked, isTrue);
+
+        // Revoke update authority
+        final outRevokeUpdateAuthority = await c.revokeUpdateAuthority(
+          tokenAddress,
+          true,
+        );
+
+        expect(outRevokeUpdateAuthority, isA<ContractOutput>());
+        expect(outRevokeUpdateAuthority.logs, isNotNull);
+        expect(outRevokeUpdateAuthority.logs!, isNotEmpty);
+
+        final revokeUpdateLog = outRevokeUpdateAuthority.logs!.first;
+        expect(revokeUpdateLog.logType, equals('Token_UpdateAuthorityRevoked'));
+        expect(revokeUpdateLog.contractAddress, equals(tokenAddress));
+
+        final revokeUpdateEvent = jsonDecode(
+          utf8.decode(base64Decode(revokeUpdateLog.event)),
+        ) as Map<String, dynamic>;
+
+        expect(revokeUpdateEvent['address'], equals(tokenAddress));
+        expect(revokeUpdateEvent['update_authority_revoked'], isTrue);
+
+        final outGetAfterRevokeUpdate = await c.getToken(
+          tokenAddress: tokenAddress,
+        );
+
+        expect(outGetAfterRevokeUpdate.states, isNotNull);
+        expect(outGetAfterRevokeUpdate.states!, isNotEmpty);
+
+        final tokenStateAfterRevokeUpdate = unmarshalState(
+          outGetAfterRevokeUpdate.states!.first.object,
+          (json) => TokenState.fromJson(json),
+        );
+
+        expect(tokenStateAfterRevokeUpdate.address, equals(tokenAddress));
+        expect(tokenStateAfterRevokeUpdate.updateAuthorityRevoked, isTrue);
 
 
        // transfer para outro user
