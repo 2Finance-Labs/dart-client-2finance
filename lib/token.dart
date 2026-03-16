@@ -473,6 +473,55 @@ extension Token on TwoFinanceBlockchain {
     );
   }
 
+
+    Future<ContractOutput> freezeWallet(String tokenAddress, String wallet) async {
+    final from = publicKeyHex ?? '';
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+    if (wallet.isEmpty) throw ArgumentError('wallet not set');
+
+    KeyManager.validateEDDSAPublicKeyHex(from);
+    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    KeyManager.validateEDDSAPublicKeyHex(wallet);
+
+    final uuid7 = newUUID7();
+    const int version = 1;
+
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: tokenAddress,
+      method: METHOD_FREEZE_WALLET,
+      data: {"wallet": wallet},
+      version: version,
+      uuid7: uuid7,
+    );
+  }
+
+  Future<ContractOutput> unfreezeWallet(String tokenAddress, String wallet) async {
+    final from = publicKeyHex ?? '';
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+    if (wallet.isEmpty) throw ArgumentError('wallet not set');
+
+    KeyManager.validateEDDSAPublicKeyHex(from);
+    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    KeyManager.validateEDDSAPublicKeyHex(wallet);
+
+    final uuid7 = newUUID7();
+    const int version = 1;
+
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: tokenAddress,
+      method: METHOD_UNFREEZE_WALLET,
+      data: {"wallet": wallet},
+      version: version,
+      uuid7: uuid7,
+    );
+  }
+
+
+
   Future<ContractOutput> pauseToken(String tokenAddress) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
@@ -594,6 +643,27 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_TRANSFERABLE_TOKEN,
+      data: {"transferable": transferable},
+      version: version,
+      uuid7: uuid7,
+    );
+  }
+
+  Future<ContractOutput> untransferableToken(String tokenAddress, bool transferable) async {
+    final from = publicKeyHex ?? '';
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+
+    KeyManager.validateEDDSAPublicKeyHex(from);
+    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+
+    final uuid7 = newUUID7();
+    const int version = 1;
+
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: tokenAddress,
+      method: METHOD_UNTRANSFERABLE_TOKEN,
       data: {"transferable": transferable},
       version: version,
       uuid7: uuid7,

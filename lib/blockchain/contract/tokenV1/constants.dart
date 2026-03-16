@@ -24,7 +24,9 @@ const String METHOD_UPDATE_FEE_TIERS = "update_FeeTiers";
 const String METHOD_UPDATE_FEE_ADDRESS = "update_FeeAddress";
 const String METHOD_UPDATE_GLB_FILE = "update_GLB_File";
 const String METHOD_TRANSFERABLE_TOKEN = "transferable_token";
-const String METHOD_UNTRANSFERABLE_TOKEN = "untransferable_token";
+const String METHOD_UNTRANSFERABLE_TOKEN = "untransferable_Token";
+const String METHOD_FREEZE_WALLET = "freeze_wallet";
+const String METHOD_UNFREEZE_WALLET = "unfreeze_wallet";
 
 const String METHOD_GET_TOKEN = "get_Token";
 const String METHOD_LIST_TOKENS = "list_Tokens";

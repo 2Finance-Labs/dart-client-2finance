@@ -39,10 +39,11 @@ void main() {
 
       // final addr = contr.address!;
       final owner = kp.publicKey;
-      final feeAddress = kp.publicKey;
+      final feeKp = await validKeyPair();
+      final feeAddress = feeKp.publicKey;
       final expiredAt = DateTime.now()
-         .toUtc()
-         .add(const Duration(days: 365));
+          .toUtc()
+          .add(const Duration(days: 365));
       final symbol = "TST_${generateRandomSuffix(6)}";
       final frozenAcc = await validKeyPair();
 
@@ -356,39 +357,154 @@ void main() {
       expect(listedBalance!.amount, isNotNull);
       expect(int.parse(listedBalance!.amount!), int.parse("1150"));
 
+      final outGetAfterMint = await c.getToken(tokenAddress: tokenAddress);
+      expect(outGetAfterMint.states, isNotNull);
+      expect(outGetAfterMint.states!, isNotEmpty);
+
+      final tokenStateAfterMint = unmarshalState(
+        outGetAfterMint.states!.first.object,
+        (json) => TokenState.fromJson(json),
+      );
+
+      expect(tokenStateAfterMint.address, equals(tokenAddress));
+      expect(tokenStateAfterMint.totalSupply, equals("1150"));
+
+
+
+
+        // ------------------
+        //   TRANSFER TOKEN
+        // ------------------
+
+      final receiverTransferKp = await validKeyPair();
+      final receiverTransfer = receiverTransferKp.publicKey;
+
+      // tentativa com erro por saldo insuficiente
+      await expectLater(
+        () => c.transferToken(
+          tokenAddress: tokenAddress,
+          transferTo: receiverTransfer,
+          amount: "5000000000000000",
+          decimals: 0,
+          tokenType: TOKEN_TYPE_FUNGIBLE,
+          uuid: "",
+        ),
+        throwsA(isA<Exception>()),
+      );
+
+      // transfer com sucesso
+      final outTransfer = await c.transferToken(
+        tokenAddress: tokenAddress,
+        transferTo: receiverTransfer,
+        amount: "600",
+        decimals: 0,
+        tokenType: TOKEN_TYPE_FUNGIBLE,
+        uuid: "",
+      );
+
+      expect(outTransfer, isA<ContractOutput>());
+      expect(outTransfer.logs, isNotNull);
+      expect(outTransfer.logs!, isNotEmpty);
+
+      // saldo do owner após transfer
+      final outOwnerBalAfterTransfer = await c.getTokenBalance(
+        tokenAddress: tokenAddress,
+        ownerAddress: owner,
+      );
+      expect(outOwnerBalAfterTransfer.states, isNotNull);
+      expect(outOwnerBalAfterTransfer.states!, isNotEmpty);
+
+      final ownerBalAfterTransfer = unmarshalState(
+        outOwnerBalAfterTransfer.states!.first.object,
+        (json) => BalanceState.fromJson(json),
+      );
+
+      // saldo do receiver após transfer
+      final outReceiverBalAfterTransfer = await c.getTokenBalance(
+        tokenAddress: tokenAddress,
+        ownerAddress: receiverTransfer,
+      );
+      expect(outReceiverBalAfterTransfer.states, isNotNull);
+      expect(outReceiverBalAfterTransfer.states!, isNotEmpty);
+
+      final receiverBalAfterTransfer = unmarshalState(
+        outReceiverBalAfterTransfer.states!.first.object,
+        (json) => BalanceState.fromJson(json),
+      );
+
+      // supply não muda no transfer
+      final outGetAfterTransfer = await c.getToken(tokenAddress: tokenAddress);
+      expect(outGetAfterTransfer.states, isNotNull);
+      expect(outGetAfterTransfer.states!, isNotEmpty);
+
+      final tokenStateAfterTransfer = unmarshalState(
+        outGetAfterTransfer.states!.first.object,
+        (json) => TokenState.fromJson(json),
+      );
+
+
+      final outFeeBalAfterTransfer = await c.getTokenBalance(
+      tokenAddress: tokenAddress,
+      ownerAddress: feeAddress,
+      );
+      expect(outFeeBalAfterTransfer.states, isNotNull);
+      expect(outFeeBalAfterTransfer.states!, isNotEmpty);
+
+      final feeBalAfterTransfer = unmarshalState(
+        outFeeBalAfterTransfer.states!.first.object,
+        (json) => BalanceState.fromJson(json),
+      );
+
+      expect(ownerBalAfterTransfer.amount, equals("550"));
+      expect(receiverBalAfterTransfer.amount, equals("597"));
+      expect(feeBalAfterTransfer.amount, equals("3"));
+      expect(tokenStateAfterTransfer.totalSupply, equals("1150"));
+
+
 
         // ------------------
         //        BURN
         // ------------------
-      //   final outBurn = await c.burnToken(
-      //     tokenAddress: tokenAddress,
-      //     amount: "0.25",
-      //     decimals: 2,
-      //     tokenType: TOKEN_TYPE_FUNGIBLE,
-      //     uuid: "",
-      //   );
+      final outBurn = await c.burnToken(
+      tokenAddress: tokenAddress,
+      amount: "25",
+      decimals: 0,
+      tokenType: TOKEN_TYPE_FUNGIBLE,
+      uuid: "",
+      );
 
-      //   expect(outBurn, isA<ContractOutput>());
-      //   expect(outBurn.logs, isNotNull);
-      //   expect(outBurn.logs!, isNotEmpty);
+      expect(outBurn, isA<ContractOutput>());
+      expect(outBurn.logs, isNotNull);
+      expect(outBurn.logs!, isNotEmpty);
 
-        // saldo do owner depois do burn
-      //   final outBalAfterBurn = await c.getTokenBalance(
-      //     tokenAddress: tokenAddress,
-      //    ownerAddress: owner,
-      //   );
-      //  expect(outBalAfterBurn.states, isNotNull);
-      //   expect(outBalAfterBurn.states!, isNotEmpty);
+      // saldo do owner depois do burn
+      final outBalAfterBurn = await c.getTokenBalance(
+        tokenAddress: tokenAddress,
+        ownerAddress: owner,
+      );
+      expect(outBalAfterBurn.states, isNotNull);
+      expect(outBalAfterBurn.states!, isNotEmpty);
 
-      //   final balAfterBurn = unmarshalState(
-      //     outBalAfterBurn.states!.first.object,
-      //     (json) => BalanceState.fromJson(json),
-      //   );
+      final balAfterBurn = unmarshalState(
+        outBalAfterBurn.states!.first.object,
+        (json) => BalanceState.fromJson(json),
+      );
 
-      //   expect(balAfterBurn.ownerAddress, equals(owner));
-      //   expect(balAfterBurn.tokenAddress, equals(tokenAddress));
-      //   expect(balAfterBurn.amount, isNotNull);
-      //   expect(int.parse(balAfterBurn.amount!), equals(1125));
+      expect(balAfterBurn.ownerAddress, equals(owner));
+      expect(balAfterBurn.tokenAddress, equals(tokenAddress));
+      expect(balAfterBurn.amount, equals("525"));
+
+      final outGetAfterBurn = await c.getToken(tokenAddress: tokenAddress);
+      expect(outGetAfterBurn.states, isNotNull);
+      expect(outGetAfterBurn.states!, isNotEmpty);
+
+      final tokenStateAfterBurn = unmarshalState(
+        outGetAfterBurn.states!.first.object,
+        (json) => TokenState.fromJson(json),
+      );
+
+      expect(tokenStateAfterBurn.address, equals(tokenAddress));
+      expect(tokenStateAfterBurn.totalSupply, equals("1125"));
 
         
         
@@ -438,17 +554,15 @@ void main() {
           isEmpty,
         );
 
-
-
         // ------------------
         //    ALLOW USERS
         // ------------------
-        final receiverKp = await validKeyPair();
-        final receiver = receiverKp.publicKey;
+        final allowUserKp = await validKeyPair();
+        final allowUser = allowUserKp.publicKey;
 
         final outAllowUsers = await c.allowUsers(
           tokenAddress,
-          {receiver: true},
+          {allowUser: true},
         );
 
         expect(outAllowUsers, isA<ContractOutput>());
@@ -470,7 +584,7 @@ void main() {
           allowEvent['access_users'] as Map,
         );
 
-        expect(allowUsersMap[receiver], isTrue);
+        expect(allowUsersMap[allowUser], isTrue);
 
         final outGetAfterAllow = await c.getToken(tokenAddress: tokenAddress);
         expect(outGetAfterAllow.states, isNotNull);
@@ -484,15 +598,14 @@ void main() {
         expect(tokenStateAfterAllow.address, equals(tokenAddress));
         expect(tokenStateAfterAllow.accessPolicy, isNotNull);
         expect(tokenStateAfterAllow.accessPolicy!.mode, equals('ALLOW_ACCESS_MODE'));
-        expect(tokenStateAfterAllow.accessPolicy!.users[receiver], isTrue);
-
+        expect(tokenStateAfterAllow.accessPolicy!.users[allowUser], isTrue);
 
         // ------------------
         // REMOVE ALLOW USERS
         // ------------------
         final outRemoveAllowUsers = await c.disallowUsers(
           tokenAddress,
-          {receiver: true},
+          {allowUser: true},
         );
 
         expect(outRemoveAllowUsers, isA<ContractOutput>());
@@ -514,8 +627,8 @@ void main() {
           removeAllowEvent['access_users'] as Map,
         );
 
-        expect(removeAllowUsersMap.containsKey(receiver), isTrue);
-        expect(removeAllowUsersMap[receiver], isTrue);
+        expect(removeAllowUsersMap.containsKey(allowUser), isTrue);
+        expect(removeAllowUsersMap[allowUser], isTrue);
 
         final outGetAfterRemoveAllow = await c.getToken(tokenAddress: tokenAddress);
         expect(outGetAfterRemoveAllow.states, isNotNull);
@@ -533,10 +646,9 @@ void main() {
           equals('ALLOW_ACCESS_MODE'),
         );
         expect(
-          tokenStateAfterRemoveAllow.accessPolicy!.users.containsKey(receiver),
+          tokenStateAfterRemoveAllow.accessPolicy!.users.containsKey(allowUser),
           isFalse,
         );
-        
 
         // ------------------
         // CHANGE ACCESS MODE
@@ -585,7 +697,7 @@ void main() {
         // ------------------
         final outBlockUsers = await c.blockUsers(
           tokenAddress,
-          {receiver: true},
+          {receiverTransfer: true},
         );
 
         expect(outBlockUsers, isA<ContractOutput>());
@@ -607,7 +719,7 @@ void main() {
           blockEvent['access_users'] as Map,
         );
 
-        expect(blockUsersMap[receiver], isTrue);
+        expect(blockUsersMap[receiverTransfer], isTrue);
 
         final outGetAfterBlock = await c.getToken(tokenAddress: tokenAddress);
         expect(outGetAfterBlock.states, isNotNull);
@@ -624,15 +736,14 @@ void main() {
           tokenStateAfterBlock.accessPolicy!.mode,
           equals('DENY_ACCESS_MODE'),
         );
-        expect(tokenStateAfterBlock.accessPolicy!.users[receiver], isTrue);
-
+        expect(tokenStateAfterBlock.accessPolicy!.users[receiverTransfer], isTrue);
 
         // ------------------
         // REMOVE DENY USERS
         // ------------------
         final outUnblockUsers = await c.unblockUsers(
           tokenAddress,
-          {receiver: true},
+          {receiverTransfer: true},
         );
 
         expect(outUnblockUsers, isA<ContractOutput>());
@@ -654,8 +765,8 @@ void main() {
           unblockEvent['access_users'] as Map,
         );
 
-        expect(unblockUsersMap.containsKey(receiver), isTrue);
-        expect(unblockUsersMap[receiver], isTrue);
+        expect(unblockUsersMap.containsKey(receiverTransfer), isTrue);
+        expect(unblockUsersMap[receiverTransfer], isTrue);
 
         final outGetAfterUnblock = await c.getToken(tokenAddress: tokenAddress);
         expect(outGetAfterUnblock.states, isNotNull);
@@ -673,11 +784,9 @@ void main() {
           equals('DENY_ACCESS_MODE'),
         );
         expect(
-          tokenStateAfterUnblock.accessPolicy!.users.containsKey(receiver),
+          tokenStateAfterUnblock.accessPolicy!.users.containsKey(receiverTransfer),
           isFalse,
         );
-
-
         // ------------------
         //       PAUSE
         // ------------------
@@ -912,6 +1021,94 @@ void main() {
         );
 
 
+
+        // ------------------
+        //      FREEZE
+        // ------------------
+        final outFreezeWallet = await c.freezeWallet(
+          tokenAddress,
+          owner,
+        );
+
+        expect(outFreezeWallet, isA<ContractOutput>());
+        expect(outFreezeWallet.logs, isNotNull);
+        expect(outFreezeWallet.logs!, isNotEmpty);
+
+        final freezeLog = outFreezeWallet.logs!.first;
+        expect(freezeLog.contractAddress, equals(tokenAddress));
+        expect(freezeLog.logType, equals('Token_Freeze_Account'));
+
+        final freezeEvent = jsonDecode(
+          utf8.decode(base64Decode(freezeLog.event)),
+        ) as Map<String, dynamic>;
+
+        expect(freezeEvent['token_address'], equals(tokenAddress));
+
+        final frozenAccountsEventMap = Map<String, dynamic>.from(
+          freezeEvent['frozen_accounts'] as Map,
+        );
+
+        expect(frozenAccountsEventMap[owner], isTrue);
+
+        final outGetAfterFreeze = await c.getToken(tokenAddress: tokenAddress);
+        expect(outGetAfterFreeze.states, isNotNull);
+        expect(outGetAfterFreeze.states!, isNotEmpty);
+
+        final tokenStateAfterFreeze = unmarshalState(
+          outGetAfterFreeze.states!.first.object,
+          (json) => TokenState.fromJson(json),
+        );
+
+        expect(tokenStateAfterFreeze.address, equals(tokenAddress));
+        expect(tokenStateAfterFreeze.frozenAccounts, isNotNull);
+        expect(tokenStateAfterFreeze.frozenAccounts![owner], isTrue);
+
+        // ------------------
+        //      UNFREEZE
+        // ------------------
+        final outUnfreezeWallet = await c.unfreezeWallet(
+          tokenAddress,
+          owner,
+        );
+
+        expect(outUnfreezeWallet, isA<ContractOutput>());
+        expect(outUnfreezeWallet.logs, isNotNull);
+        expect(outUnfreezeWallet.logs!, isNotEmpty);
+
+        final unfreezeLog = outUnfreezeWallet.logs!.first;
+        expect(unfreezeLog.contractAddress, equals(tokenAddress));
+        expect(unfreezeLog.logType, equals('Token_Unfreeze_Account'));
+
+        final unfreezeEvent = jsonDecode(
+          utf8.decode(base64Decode(unfreezeLog.event)),
+        ) as Map<String, dynamic>;
+
+        expect(unfreezeEvent['token_address'], equals(tokenAddress));
+
+        final unfrozenAccountsEventMap = Map<String, dynamic>.from(
+          unfreezeEvent['frozen_accounts'] as Map,
+        );
+
+        expect(unfrozenAccountsEventMap[owner], isFalse);
+
+        final outGetAfterUnfreeze = await c.getToken(tokenAddress: tokenAddress);
+        expect(outGetAfterUnfreeze.states, isNotNull);
+        expect(outGetAfterUnfreeze.states!, isNotEmpty);
+
+        final tokenStateAfterUnfreeze = unmarshalState(
+          outGetAfterUnfreeze.states!.first.object,
+          (json) => TokenState.fromJson(json),
+        );
+
+        expect(tokenStateAfterUnfreeze.address, equals(tokenAddress));
+        expect(tokenStateAfterUnfreeze.frozenAccounts, isNotNull);
+        expect(
+          tokenStateAfterUnfreeze.frozenAccounts!.containsKey(owner),
+          isFalse,
+        );
+
+
+
         // ------------------
         //    UPDATE GLB FILE
         // ------------------
@@ -941,8 +1138,6 @@ void main() {
         expect(updatedGlbTokenState.address, equals(tokenAddress));
         expect(updatedGlbTokenState.assetGlbUri, equals(newGlbUri));
 
-
-
         // ------------------
         // REVOKE AUTHORITY
         // ------------------
@@ -958,7 +1153,7 @@ void main() {
         expect(outRevokeFreezeAuthority.logs!, isNotEmpty);
 
         final revokeFreezeLog = outRevokeFreezeAuthority.logs!.first;
-        // Ajuste a string se o backend retornar outro nome exato
+        
         expect(revokeFreezeLog.logType, equals('Token_FreezeAuthorityRevoked'));
         expect(revokeFreezeLog.contractAddress, equals(tokenAddress));
 
@@ -1056,32 +1251,6 @@ void main() {
         expect(tokenStateAfterRevokeUpdate.address, equals(tokenAddress));
         expect(tokenStateAfterRevokeUpdate.updateAuthorityRevoked, isTrue);
 
-
-       // transfer para outro user
-       // final kp2 = await validKeyPair();
-      //  final to = kp2.publicKey;
-
-      //  final outTransfer = await c.transferToken(
-      //    tokenAddress: tokenAddress,
-      //    transferTo: to,
-      //    amount: "0.50",
-      //    decimals: 2,
-      //    tokenType: TOKEN_TYPE_FUNGIBLE,
-      //    uuid: "",
-      //  );
-      //  expect(outTransfer, isA<ContractOutput>());
-
-       // balance do receiver (pode precisar de retries dependendo da consistência eventual)
-      //  final outBal2 = await c.getTokenBalance(tokenAddress: tokenAddress, ownerAddress: to);
-      //  expect(outBal2.states, isNotNull);
-      //  expect(outBal2.states!, isNotEmpty);
-
-      //  final bal2 = unmarshalState(
-      //    outBal2.states!.first.object,
-      //    (json) => BalanceState.fromJson(json),
-      //  );
-      //  expect(bal2.ownerAddress, equals(to));
-      //  expect(int.parse(bal2.amount!), greaterThanOrEqualTo(50));
      });
 
 
