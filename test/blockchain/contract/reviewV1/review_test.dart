@@ -6,30 +6,19 @@ import 'package:two_finance_blockchain/blockchain/types/types.dart';
 import 'package:two_finance_blockchain/blockchain/contract/reviewV1/constants.dart';
 import 'package:two_finance_blockchain/blockchain/utils/marshal.dart';
 import 'package:two_finance_blockchain/two_finance_blockchain.dart';
-
-import '../../../helpers/helpers.dart';
+import '../../../helpers/helpers.dart' hide unmarshalEvent;
 
 typedef JsonMap = Map<String, dynamic>;
-
-JsonMap _decodeEvent(String encodedEvent) {
-  return Map<String, dynamic>.from(
-    jsonDecode(utf8.decode(base64Decode(encodedEvent))) as Map,
-  );
-}
-
-JsonMap _unmarshalMapState(dynamic object) {
-  return unmarshalState(
-    object,
-    (json) => Map<String, dynamic>.from(json as Map),
-  );
-}
 
 Future<JsonMap> _getReviewState(TwoFinanceBlockchain c, String address) async {
   final out = await c.getReview(address: address);
   expect(out.states, isNotNull);
   expect(out.states!, isNotEmpty);
 
-  return _unmarshalMapState(out.states!.first.object);
+  return unmarshalState(
+    out.states!.first.object,
+    (json) => Map<String, dynamic>.from(json as Map),
+  );
 }
 
 void _expectDateClose(
@@ -140,7 +129,10 @@ void main() {
       expect(addLog.contractAddress, equals(reviewAddress));
       expect(addLog.logType, equals('Review_Added'));
 
-      final addEvent = _decodeEvent(addLog.event);
+      final addEvent = unmarshalEvent<JsonMap>(
+        addLog.event,
+        (json) => Map<String, dynamic>.from(json as Map),
+      );
 
       expect(addEvent['address'], equals(reviewAddress));
       expect(addEvent['reviewer'], equals(reviewer));
@@ -212,7 +204,10 @@ void main() {
       expect(updateLog.contractAddress, equals(reviewAddress));
       expect(updateLog.logType, equals('Review_Updated'));
 
-      final updateEvent = _decodeEvent(updateLog.event);
+      final updateEvent = unmarshalEvent<JsonMap>(
+        updateLog.event,
+        (json) => Map<String, dynamic>.from(json as Map),
+      );
 
       expect(updateEvent['address'], equals(reviewAddress));
       expect(updateEvent['subject_type'], equals(subjectType));
@@ -261,7 +256,10 @@ void main() {
       expect(hideLog.contractAddress, equals(reviewAddress));
       expect(hideLog.logType, equals('Review_Hidden'));
 
-      final hideEvent = _decodeEvent(hideLog.event);
+      final hideEvent = unmarshalEvent<JsonMap>(
+        hideLog.event,
+        (json) => Map<String, dynamic>.from(json as Map),
+      );
 
       expect(hideEvent['address'], equals(reviewAddress));
       expect(hideEvent['hidden'], isTrue);
@@ -302,7 +300,10 @@ void main() {
       expect(voteLog.contractAddress, equals(reviewAddress));
       expect(voteLog.logType, equals('Review_Helpful_Voted'));
 
-      final voteEvent = _decodeEvent(voteLog.event);
+      final voteEvent = unmarshalEvent<JsonMap>(
+        voteLog.event,
+        (json) => Map<String, dynamic>.from(json as Map),
+      );
 
       expect(voteEvent['address'], equals(reviewAddress));
       expect(voteEvent['voter'], equals(voter));
@@ -348,7 +349,10 @@ void main() {
       expect(reportLog.contractAddress, equals(reviewAddress));
       expect(reportLog.logType, equals('Review_Reported'));
 
-      final reportEvent = _decodeEvent(reportLog.event);
+      final reportEvent = unmarshalEvent<JsonMap>(
+        reportLog.event,
+        (json) => Map<String, dynamic>.from(json as Map),
+      );
 
       expect(reportEvent['address'], equals(reviewAddress));
       expect(reportEvent['reporter'], equals(reporter));
@@ -402,7 +406,10 @@ void main() {
       expect(moderateLog.contractAddress, equals(reviewAddress));
       expect(moderateLog.logType, equals('Review_Moderated'));
 
-      final moderateEvent = _decodeEvent(moderateLog.event);
+      final moderateEvent = unmarshalEvent<JsonMap>(
+        moderateLog.event,
+        (json) => Map<String, dynamic>.from(json as Map),
+      );
 
       expect(moderateEvent['address'], equals(reviewAddress));
       expect(moderateEvent['action'], equals(approvedStatus));
@@ -445,7 +452,12 @@ void main() {
       expect(outListReviews.states!, isNotEmpty);
 
       final listedReviews = outListReviews.states!
-          .map((state) => _unmarshalMapState(state.object))
+          .map(
+            (state) => unmarshalState(
+              state.object,
+              (json) => Map<String, dynamic>.from(json as Map),
+            ),
+          )
           .toList();
 
       expect(listedReviews.length, equals(1));
