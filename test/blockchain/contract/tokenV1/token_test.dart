@@ -88,6 +88,19 @@ void main() {
          transferable: true,
          stablecoin: false,
        );
+        expect(outAdd, isA<ContractOutput>());
+        expect(outAdd.logs, isNotNull);
+        expect(outAdd.logs!, isNotEmpty);
+
+        final addLog = outAdd.logs!.first;
+        expect(addLog.contractAddress, equals(addr));
+        expect(addLog.logType, equals('Token_Created'));
+
+        final addEvent = _decodeEvent(addLog.event);
+        expect(addEvent['address'], equals(addr));
+        expect(addEvent['symbol'], equals(symbol));
+        expect(addEvent['name'], equals('Test Token'));
+        expect(addEvent['owner'], equals(owner));
 
         final tokenAddress = addr;
         final outGet = await c.getToken(tokenAddress: tokenAddress);
@@ -503,54 +516,6 @@ void main() {
 
       expect(tokenStateAfterBurn.address, equals(tokenAddress));
       expect(tokenStateAfterBurn.totalSupply, equals("1125"));
-
-        
-        
-
-        // ------------------
-        // CHANGE ACCESS MODE
-        // ------------------
-     //   final outChangeAccessModeToAllow = await c.changeAccessMode(
-     //     tokenAddress,
-     //     'ALLOW_ACCESS_MODE',
-     //   );
-
-     //   expect(outChangeAccessModeToAllow, isA<ContractOutput>());
-     //   expect(outChangeAccessModeToAllow.logs, isNotNull);
-     //   expect(outChangeAccessModeToAllow.logs!, isNotEmpty);
-
-     //   final changeAccessToAllowLog = outChangeAccessModeToAllow.logs!.first;
-     //   expect(changeAccessToAllowLog.contractAddress, equals(tokenAddress));
-     //   expect(changeAccessToAllowLog.logType, equals('Token_AccessModeChanged'));
-
-      //  final changeAccessToAllowEvent = jsonDecode(
-      //    utf8.decode(base64Decode(changeAccessToAllowLog.event)),
-      //  ) as Map<String, dynamic>;
-
-      //  expect(changeAccessToAllowEvent['address'], equals(tokenAddress));
-       // expect(changeAccessToAllowEvent['access_mode'], equals('ALLOW_ACCESS_MODE'));
-
-       // final outGetAfterChangeAccessModeToAllow = await c.getToken(
-       //   tokenAddress: tokenAddress,
-       // );
-      //  expect(outGetAfterChangeAccessModeToAllow.states, isNotNull);
-      //  expect(outGetAfterChangeAccessModeToAllow.states!, isNotEmpty);
-
-       // final tokenStateAfterChangeAccessModeToAllow = unmarshalState(
-       //   outGetAfterChangeAccessModeToAllow.states!.first.object,
-      //    (json) => TokenState.fromJson(json),
-       // );
-
-       // expect(tokenStateAfterChangeAccessModeToAllow.address, equals(tokenAddress));
-      //  expect(tokenStateAfterChangeAccessModeToAllow.accessPolicy, isNotNull);
-       // expect(
-       //   tokenStateAfterChangeAccessModeToAllow.accessPolicy!.mode,
-      //    equals('ALLOW_ACCESS_MODE'),
-        //);
-        //expect(
-        //  tokenStateAfterChangeAccessModeToAllow.accessPolicy!.users,
-        //  isEmpty,
-        //);
 
         // ------------------
         // ACCESS CONTROL
