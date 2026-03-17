@@ -47,6 +47,9 @@ void main() {
       final symbol = "TST_${generateRandomSuffix(6)}";
       final frozenAcc = await validKeyPair();
 
+      final receiverTransferKp = await validKeyPair();
+      final receiverTransfer = receiverTransferKp.publicKey;
+
       final outAdd = await c.addToken(
          address: addr,
          symbol: symbol,
@@ -62,10 +65,8 @@ void main() {
          tags: {"k": "v"},
          creator: "Name of creator",
          creatorWebsite: "https://creator.example.com",
-         accessPolicy: AccessPolicy(
-          users: {},
-          mode: "DENY_ACCESS_MODE",
-        ),
+         allowedUsers: {receiverTransfer: true},
+         blockedUsers: {},
          frozenAccounts: {frozenAcc.publicKey: true},
          feeTiersList: const <Map<String, dynamic>>[
            {
@@ -136,9 +137,9 @@ void main() {
        expect(tokenState.creatorWebsite, equals("https://creator.example.com"));
        expect(tokenState.frozenAccounts, isNotNull);
        expect(tokenState.frozenAccounts, equals({frozenAcc.publicKey: true}));
-       expect(tokenState.accessPolicy, isNotNull);
-       expect(tokenState.accessPolicy!.users, isEmpty);
-       expect(tokenState.accessPolicy!.mode, equals("DENY_ACCESS_MODE"));
+       expect(tokenState.allowedUsers, isNotNull);
+       expect(tokenState.allowedUsers![receiverTransfer], isTrue);
+       expect(tokenState.blockedUsers ?? {}, isEmpty);
        expect(tokenState.feeTiersList, isNotNull);
        expect(tokenState.feeTiersList, equals([
          FeeTier(
@@ -370,14 +371,11 @@ void main() {
       expect(tokenStateAfterMint.totalSupply, equals("1150"));
 
 
-
+      
 
         // ------------------
         //   TRANSFER TOKEN
         // ------------------
-
-      final receiverTransferKp = await validKeyPair();
-      final receiverTransfer = receiverTransferKp.publicKey;
 
       // tentativa com erro por saldo insuficiente
       await expectLater(
@@ -512,47 +510,56 @@ void main() {
         // ------------------
         // CHANGE ACCESS MODE
         // ------------------
-        final outChangeAccessModeToAllow = await c.changeAccessMode(
-          tokenAddress,
-          'ALLOW_ACCESS_MODE',
-        );
+     //   final outChangeAccessModeToAllow = await c.changeAccessMode(
+     //     tokenAddress,
+     //     'ALLOW_ACCESS_MODE',
+     //   );
 
-        expect(outChangeAccessModeToAllow, isA<ContractOutput>());
-        expect(outChangeAccessModeToAllow.logs, isNotNull);
-        expect(outChangeAccessModeToAllow.logs!, isNotEmpty);
+     //   expect(outChangeAccessModeToAllow, isA<ContractOutput>());
+     //   expect(outChangeAccessModeToAllow.logs, isNotNull);
+     //   expect(outChangeAccessModeToAllow.logs!, isNotEmpty);
 
-        final changeAccessToAllowLog = outChangeAccessModeToAllow.logs!.first;
-        expect(changeAccessToAllowLog.contractAddress, equals(tokenAddress));
-        expect(changeAccessToAllowLog.logType, equals('Token_AccessModeChanged'));
+     //   final changeAccessToAllowLog = outChangeAccessModeToAllow.logs!.first;
+     //   expect(changeAccessToAllowLog.contractAddress, equals(tokenAddress));
+     //   expect(changeAccessToAllowLog.logType, equals('Token_AccessModeChanged'));
 
-        final changeAccessToAllowEvent = jsonDecode(
-          utf8.decode(base64Decode(changeAccessToAllowLog.event)),
-        ) as Map<String, dynamic>;
+      //  final changeAccessToAllowEvent = jsonDecode(
+      //    utf8.decode(base64Decode(changeAccessToAllowLog.event)),
+      //  ) as Map<String, dynamic>;
 
-        expect(changeAccessToAllowEvent['address'], equals(tokenAddress));
-        expect(changeAccessToAllowEvent['access_mode'], equals('ALLOW_ACCESS_MODE'));
+      //  expect(changeAccessToAllowEvent['address'], equals(tokenAddress));
+       // expect(changeAccessToAllowEvent['access_mode'], equals('ALLOW_ACCESS_MODE'));
 
-        final outGetAfterChangeAccessModeToAllow = await c.getToken(
-          tokenAddress: tokenAddress,
-        );
-        expect(outGetAfterChangeAccessModeToAllow.states, isNotNull);
-        expect(outGetAfterChangeAccessModeToAllow.states!, isNotEmpty);
+       // final outGetAfterChangeAccessModeToAllow = await c.getToken(
+       //   tokenAddress: tokenAddress,
+       // );
+      //  expect(outGetAfterChangeAccessModeToAllow.states, isNotNull);
+      //  expect(outGetAfterChangeAccessModeToAllow.states!, isNotEmpty);
 
-        final tokenStateAfterChangeAccessModeToAllow = unmarshalState(
-          outGetAfterChangeAccessModeToAllow.states!.first.object,
-          (json) => TokenState.fromJson(json),
-        );
+       // final tokenStateAfterChangeAccessModeToAllow = unmarshalState(
+       //   outGetAfterChangeAccessModeToAllow.states!.first.object,
+      //    (json) => TokenState.fromJson(json),
+       // );
 
-        expect(tokenStateAfterChangeAccessModeToAllow.address, equals(tokenAddress));
-        expect(tokenStateAfterChangeAccessModeToAllow.accessPolicy, isNotNull);
-        expect(
-          tokenStateAfterChangeAccessModeToAllow.accessPolicy!.mode,
-          equals('ALLOW_ACCESS_MODE'),
-        );
-        expect(
-          tokenStateAfterChangeAccessModeToAllow.accessPolicy!.users,
-          isEmpty,
-        );
+       // expect(tokenStateAfterChangeAccessModeToAllow.address, equals(tokenAddress));
+      //  expect(tokenStateAfterChangeAccessModeToAllow.accessPolicy, isNotNull);
+       // expect(
+       //   tokenStateAfterChangeAccessModeToAllow.accessPolicy!.mode,
+      //    equals('ALLOW_ACCESS_MODE'),
+        //);
+        //expect(
+        //  tokenStateAfterChangeAccessModeToAllow.accessPolicy!.users,
+        //  isEmpty,
+        //);
+
+        // ------------------
+        // ACCESS CONTROL
+        // ------------------
+        // Ajuste estes nomes se o backend estiver retornando logs específicos
+        const allowedUsersAddedLogType = 'Token_AllowedUsersAdded';
+        const allowedUsersRemovedLogType = 'Token_AllowedUsersRemoved';
+        const blockedUsersAddedLogType = 'Token_BlockedUsersAdded';
+        const blockedUsersRemovedLogType = 'Token_BlockedUsersRemoved';
 
         // ------------------
         //    ALLOW USERS
@@ -571,20 +578,13 @@ void main() {
 
         final allowLog = outAllowUsers.logs!.first;
         expect(allowLog.contractAddress, equals(tokenAddress));
-        expect(allowLog.logType, equals('Token_UsersAdded'));
+        expect(allowLog.logType, equals(allowedUsersAddedLogType));
 
-        final allowEvent = jsonDecode(
-          utf8.decode(base64Decode(allowLog.event)),
-        ) as Map<String, dynamic>;
-
+        final allowEvent = _decodeEvent(allowLog.event);
         expect(allowEvent['address'], equals(tokenAddress));
-        expect(allowEvent['access_mode'], equals('ALLOW_ACCESS_MODE'));
 
-        final allowUsersMap = Map<String, dynamic>.from(
-          allowEvent['access_users'] as Map,
-        );
-
-        expect(allowUsersMap[allowUser], isTrue);
+        final allowEventAllowedUsers = _asMap(allowEvent['allowed_users']);
+        expect(allowEventAllowedUsers[allowUser], isTrue);
 
         final outGetAfterAllow = await c.getToken(tokenAddress: tokenAddress);
         expect(outGetAfterAllow.states, isNotNull);
@@ -596,9 +596,8 @@ void main() {
         );
 
         expect(tokenStateAfterAllow.address, equals(tokenAddress));
-        expect(tokenStateAfterAllow.accessPolicy, isNotNull);
-        expect(tokenStateAfterAllow.accessPolicy!.mode, equals('ALLOW_ACCESS_MODE'));
-        expect(tokenStateAfterAllow.accessPolicy!.users[allowUser], isTrue);
+        expect(tokenStateAfterAllow.allowedUsers, isNotNull);
+        expect(tokenStateAfterAllow.allowedUsers![allowUser], isTrue);
 
         // ------------------
         // REMOVE ALLOW USERS
@@ -614,21 +613,14 @@ void main() {
 
         final removeAllowLog = outRemoveAllowUsers.logs!.first;
         expect(removeAllowLog.contractAddress, equals(tokenAddress));
-        expect(removeAllowLog.logType, equals('Token_UsersRemoved'));
+        expect(removeAllowLog.logType, equals(allowedUsersRemovedLogType));
 
-        final removeAllowEvent = jsonDecode(
-          utf8.decode(base64Decode(removeAllowLog.event)),
-        ) as Map<String, dynamic>;
-
+        final removeAllowEvent = _decodeEvent(removeAllowLog.event);
         expect(removeAllowEvent['address'], equals(tokenAddress));
-        expect(removeAllowEvent['access_mode'], equals('ALLOW_ACCESS_MODE'));
 
-        final removeAllowUsersMap = Map<String, dynamic>.from(
-          removeAllowEvent['access_users'] as Map,
-        );
-
-        expect(removeAllowUsersMap.containsKey(allowUser), isTrue);
-        expect(removeAllowUsersMap[allowUser], isTrue);
+        final removeAllowEventAllowedUsers = _asMap(removeAllowEvent['allowed_users']);
+        expect(removeAllowEventAllowedUsers.containsKey(allowUser), isTrue);
+        expect(removeAllowEventAllowedUsers[allowUser], isTrue);
 
         final outGetAfterRemoveAllow = await c.getToken(tokenAddress: tokenAddress);
         expect(outGetAfterRemoveAllow.states, isNotNull);
@@ -640,60 +632,13 @@ void main() {
         );
 
         expect(tokenStateAfterRemoveAllow.address, equals(tokenAddress));
-        expect(tokenStateAfterRemoveAllow.accessPolicy, isNotNull);
         expect(
-          tokenStateAfterRemoveAllow.accessPolicy!.mode,
-          equals('ALLOW_ACCESS_MODE'),
-        );
-        expect(
-          tokenStateAfterRemoveAllow.accessPolicy!.users.containsKey(allowUser),
+          tokenStateAfterRemoveAllow.allowedUsers?.containsKey(allowUser) ?? false,
           isFalse,
         );
 
         // ------------------
-        // CHANGE ACCESS MODE
-        // ------------------
-        final outChangeAccessMode = await c.changeAccessMode(
-          tokenAddress,
-          'DENY_ACCESS_MODE',
-        );
-
-        expect(outChangeAccessMode, isA<ContractOutput>());
-        expect(outChangeAccessMode.logs, isNotNull);
-        expect(outChangeAccessMode.logs!, isNotEmpty);
-
-        final changeAccessLog = outChangeAccessMode.logs!.first;
-        expect(changeAccessLog.contractAddress, equals(tokenAddress));
-        expect(changeAccessLog.logType, equals('Token_AccessModeChanged'));
-
-        final changeAccessEvent = jsonDecode(
-          utf8.decode(base64Decode(changeAccessLog.event)),
-        ) as Map<String, dynamic>;
-
-        expect(changeAccessEvent['address'], equals(tokenAddress));
-        expect(changeAccessEvent['access_mode'], equals('DENY_ACCESS_MODE'));
-
-        final outGetAfterChangeAccessMode = await c.getToken(
-          tokenAddress: tokenAddress,
-        );
-
-        expect(outGetAfterChangeAccessMode.states, isNotNull);
-        expect(outGetAfterChangeAccessMode.states!, isNotEmpty);
-
-        final tokenStateAfterChangeAccessMode = unmarshalState(
-          outGetAfterChangeAccessMode.states!.first.object,
-          (json) => TokenState.fromJson(json),
-        );
-
-        expect(tokenStateAfterChangeAccessMode.address, equals(tokenAddress));
-        expect(tokenStateAfterChangeAccessMode.accessPolicy, isNotNull);
-        expect(
-          tokenStateAfterChangeAccessMode.accessPolicy!.mode,
-          equals('DENY_ACCESS_MODE'),
-        );
-
-        // ------------------
-        //    DENY USERS
+        //    BLOCK USERS
         // ------------------
         final outBlockUsers = await c.blockUsers(
           tokenAddress,
@@ -706,20 +651,13 @@ void main() {
 
         final blockLog = outBlockUsers.logs!.first;
         expect(blockLog.contractAddress, equals(tokenAddress));
-        expect(blockLog.logType, equals('Token_UsersAdded'));
+        expect(blockLog.logType, equals(blockedUsersAddedLogType));
 
-        final blockEvent = jsonDecode(
-          utf8.decode(base64Decode(blockLog.event)),
-        ) as Map<String, dynamic>;
-
+        final blockEvent = _decodeEvent(blockLog.event);
         expect(blockEvent['address'], equals(tokenAddress));
-        expect(blockEvent['access_mode'], equals('DENY_ACCESS_MODE'));
 
-        final blockUsersMap = Map<String, dynamic>.from(
-          blockEvent['access_users'] as Map,
-        );
-
-        expect(blockUsersMap[receiverTransfer], isTrue);
+        final blockEventBlockedUsers = _asMap(blockEvent['blocked_users']);
+        expect(blockEventBlockedUsers[receiverTransfer], isTrue);
 
         final outGetAfterBlock = await c.getToken(tokenAddress: tokenAddress);
         expect(outGetAfterBlock.states, isNotNull);
@@ -731,15 +669,11 @@ void main() {
         );
 
         expect(tokenStateAfterBlock.address, equals(tokenAddress));
-        expect(tokenStateAfterBlock.accessPolicy, isNotNull);
-        expect(
-          tokenStateAfterBlock.accessPolicy!.mode,
-          equals('DENY_ACCESS_MODE'),
-        );
-        expect(tokenStateAfterBlock.accessPolicy!.users[receiverTransfer], isTrue);
+        expect(tokenStateAfterBlock.blockedUsers, isNotNull);
+        expect(tokenStateAfterBlock.blockedUsers![receiverTransfer], isTrue);
 
         // ------------------
-        // REMOVE DENY USERS
+        // REMOVE BLOCK USERS
         // ------------------
         final outUnblockUsers = await c.unblockUsers(
           tokenAddress,
@@ -752,21 +686,14 @@ void main() {
 
         final unblockLog = outUnblockUsers.logs!.first;
         expect(unblockLog.contractAddress, equals(tokenAddress));
-        expect(unblockLog.logType, equals('Token_UsersRemoved'));
+        expect(unblockLog.logType, equals(blockedUsersRemovedLogType));
 
-        final unblockEvent = jsonDecode(
-          utf8.decode(base64Decode(unblockLog.event)),
-        ) as Map<String, dynamic>;
-
+        final unblockEvent = _decodeEvent(unblockLog.event);
         expect(unblockEvent['address'], equals(tokenAddress));
-        expect(unblockEvent['access_mode'], equals('DENY_ACCESS_MODE'));
 
-        final unblockUsersMap = Map<String, dynamic>.from(
-          unblockEvent['access_users'] as Map,
-        );
-
-        expect(unblockUsersMap.containsKey(receiverTransfer), isTrue);
-        expect(unblockUsersMap[receiverTransfer], isTrue);
+        final unblockEventBlockedUsers = _asMap(unblockEvent['blocked_users']);
+        expect(unblockEventBlockedUsers.containsKey(receiverTransfer), isTrue);
+        expect(unblockEventBlockedUsers[receiverTransfer], isTrue);
 
         final outGetAfterUnblock = await c.getToken(tokenAddress: tokenAddress);
         expect(outGetAfterUnblock.states, isNotNull);
@@ -778,15 +705,11 @@ void main() {
         );
 
         expect(tokenStateAfterUnblock.address, equals(tokenAddress));
-        expect(tokenStateAfterUnblock.accessPolicy, isNotNull);
         expect(
-          tokenStateAfterUnblock.accessPolicy!.mode,
-          equals('DENY_ACCESS_MODE'),
-        );
-        expect(
-          tokenStateAfterUnblock.accessPolicy!.users.containsKey(receiverTransfer),
+          tokenStateAfterUnblock.blockedUsers?.containsKey(receiverTransfer) ?? false,
           isFalse,
         );
+
         // ------------------
         //       PAUSE
         // ------------------
@@ -1263,3 +1186,13 @@ void main() {
     });
   });
 }
+    Map<String, dynamic> _decodeEvent(String eventBase64) {
+      return jsonDecode(
+        utf8.decode(base64Decode(eventBase64)),
+      ) as Map<String, dynamic>;
+    }
+
+    Map<String, dynamic> _asMap(dynamic value) {
+      if (value == null) return <String, dynamic>{};
+      return Map<String, dynamic>.from(value as Map);
+    }
