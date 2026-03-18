@@ -4,270 +4,418 @@ extension Review on TwoFinanceBlockchain{
   /// Mock dos métodos sendTransaction e getState
   /// Substitua com sua implementação real
 
-//   Future<ContractOutput> addReview({
-//     String? address,
-//     required String reviewer,
-//     required String reviewee,
-//     required String subjectType,
-//     required String subjectID,
-//     required int rating,
-//     required String comment,
-//     Map<String, String>? tags,
-//     List<String>? mediaHashes,
-//     required DateTime startAt,
-//     required DateTime expiredAt,
-//     required bool hidden,
-//   }) async {
-//     final from = _publicKeyHex!;
-//     if (from.isEmpty) throw Exception("from address not set");
-//     //keys.validateEDDSAPublicKey(from);
-//     KeyManager.validateEDDSAPublicKeyHex(from);
+      Future<ContractOutput> addReview({
+        required String address,
+        required String reviewer,
+        required String reviewee,
+        required String subjectType,
+        required String subjectID,
+        required int rating,
+        required String comment,
+        Map<String, String>? tags,
+        List<String>? mediaHashes,
+        required DateTime startAt,
+        required DateTime expiredAt,
+        required bool hidden,
+      }) async {
+        final from = _publicKeyHex!;
+        if (from.isEmpty) {
+          throw Exception("from address not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(from);
 
-//     // Generate new address if null
-//     if (address == null || address.isEmpty) {
-//       final pub = await generateKeyEd25519().toString(); // Deve retornar apenas a chave pública
-//       address = pub;
-//     }
-//     //keys.validateEDDSAPublicKey(address);
-//     KeyManager.validateEDDSAPublicKeyHex(address ?? "");
+        if (address.isEmpty) {
+          throw Exception("address not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(address);
 
-//     if (reviewer.isEmpty) throw Exception("reviewer not set");
-//     //keys.validateEDDSAPublicKey(reviewer);
-//     KeyManager.validateEDDSAPublicKeyHex(reviewer);
+        if (reviewer.isEmpty) {
+          throw Exception("reviewer not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(reviewer);
 
-//     if (reviewee.isEmpty) throw Exception("reviewee not set");
-//     //keys.validateEDDSAPublicKey(reviewee);
-//     KeyManager.validateEDDSAPublicKeyHex(reviewer);
+        if (reviewee.isEmpty) {
+          throw Exception("reviewee not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(reviewee);
 
-//     if (subjectType.isEmpty) throw Exception("subject_type not set");
-//     if (subjectID.isEmpty) throw Exception("subject_id not set");
-//     if (rating < 1 || rating > 5) throw Exception("rating must be between 1 and 5");
-//     if (startAt == DateTime(0)) throw Exception("start_at not set");
-//     if (expiredAt == DateTime(0)) throw Exception("expired_at not set");
+        if (subjectType.isEmpty) {
+          throw Exception("subject_type not set");
+        }
 
-//     final to = types.DEPLOY_CONTRACT_ADDRESS;
-//     final contractVersion = REVIEW_CONTRACT_V1;
-//     final method = METHOD_ADD_REVIEW;
+        if (subjectID.isEmpty) {
+          throw Exception("subject_id not set");
+        }
 
-//     final data = {
-//       "address": address,
-//       "comment": comment,
-//       "expired_at": expiredAt.toIso8601String(),
-//       "hidden": hidden,
-//       "media_hashes": mediaHashes ?? [],
-//       "rating": rating,
-//       "reviewee": reviewee,
-//       "reviewer": reviewer,
-//       "start_at": startAt.toIso8601String(),
-//       "subject_id": subjectID,
-//       "subject_type": subjectType,
-//       "tags": tags ?? {},
-//     };
+        if (rating < 1 || rating > 5) {
+          throw Exception("rating must be between 1 and 5");
+        }
 
-//     return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-//   }
+        if (startAt.millisecondsSinceEpoch == 0) {
+          throw Exception("start_at not set");
+        }
 
-//   Future<ContractOutput> updateReview({
-//     required String address,
-//     required String subjectType,
-//     required String subjectID,
-//     int rating = 0,
-//     String? comment,
-//     Map<String, String>? tags,
-//     List<String>? mediaHashes,
-//     DateTime? startAt,
-//     DateTime? expiredAt,
-//   }) async {
-//     if (address.isEmpty) throw Exception("address not set");
-//     //keys.validateEDDSAPublicKey(address);
-//     KeyManager.validateEDDSAPublicKeyHex(address);
+        if (expiredAt.millisecondsSinceEpoch == 0) {
+          throw Exception("expired_at not set");
+        }
 
-//     final from = _publicKeyHex!;
-//     if (from.isEmpty) throw Exception("from address not set");
-//     //keys.validateEDDSAPublicKey(from);
-//     KeyManager.validateEDDSAPublicKeyHex(from);
+        final to = address;
+        const method = METHOD_ADD_REVIEW;
+        final uuid7 = newUUID7();
+        const int version = 1;
 
-//     if (subjectType.isEmpty) throw Exception("subject_type not set");
-//     if (subjectID.isEmpty) throw Exception("subject_id not set");
-//     if (rating != 0 && (rating < 1 || rating > 5)) {
-//       throw Exception("rating must be between 1 and 5");
-//     }
+        final data = <String, dynamic>{
+          "address": address,
+          "reviewer": reviewer,
+          "reviewee": reviewee,
+          "subject_type": subjectType,
+          "subject_id": subjectID,
+          "rating": rating,
+          "comment": comment,
+          "tags": tags ?? <String, String>{},
+          "media_hashes": mediaHashes ?? <String>[],
+          "start_at": startAt.toIso8601String(),
+          "expired_at": expiredAt.toIso8601String(),
+          "hidden": hidden,
+        };
 
-//     final to = address;
-//     final contractVersion = REVIEW_CONTRACT_V1;
-//     final method = METHOD_UPDATE_REVIEW;
+        return signAndSendTransaction(
+          chainID: _chainID,
+          from: from,
+          to: to,
+          method: method,
+          data: data,
+          version: version,
+          uuid7: uuid7,
+        );
+      }
 
-//     final data = {
-//       "address": address,
-//       "comment": comment ?? '',
-//       "media_hashes": mediaHashes ?? [],
-//       "rating": rating,
-//       "subject_id": subjectID,
-//       "subject_type": subjectType,
-//       "tags": tags ?? {},
-//     };
-//     if (startAt != null) data["start_at"] = startAt.toIso8601String();
-//     if (expiredAt != null) data["expired_at"] = expiredAt.toIso8601String();
+      Future<ContractOutput> getReview({
+        required String address,
+      }) async {
+        final from = _publicKeyHex!;
+        if (from.isEmpty) {
+          throw Exception("from address not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(from);
 
-//     return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-//   }
+        if (address.isEmpty) {
+          throw Exception("review address must be set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(address);
 
-//   Future<ContractOutput> hideReview(String address, bool hidden) async {
-//     if (address.isEmpty) throw Exception("address not set");
-//     //keys.validateEDDSAPublicKey(address);
-//     KeyManager.validateEDDSAPublicKeyHex(address);
-//     final from = _publicKeyHex!;
-//     if (from.isEmpty) throw Exception("from address not set");
-//     //keys.validateEDDSAPublicKey(from);
-//     KeyManager.validateEDDSAPublicKeyHex(from);
+        const method = METHOD_GET_REVIEW;
 
-//     final to = address;
-//     final contractVersion = REVIEW_CONTRACT_V1;
-//     final method = METHOD_HIDE_REVIEW;
-//     final data = {"address": address, "hidden": hidden};
+        return getState(
+          to: address,
+          method: method,
+          data: {
+            "address": address,
+          },
+        );
+      }
 
-//     return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-//   }
+      Future<ContractOutput> updateReview({
+        required String address,
+        required String subjectType,
+        required String subjectID,
+        int rating = 0,
+        String? comment,
+        Map<String, String>? tags,
+        List<String>? mediaHashes,
+        DateTime? startAt,
+        DateTime? expiredAt,
+      }) async {
+        if (address.isEmpty) {
+          throw Exception("address not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(address);
 
-//   Future<ContractOutput> voteHelpful(String address, String voter, bool isHelpful) async {
-//     if (address.isEmpty) throw Exception("address not set");
-//     //keys.validateEDDSAPublicKey(address);
-//     KeyManager.validateEDDSAPublicKeyHex(address);
-//     if (voter.isEmpty) throw Exception("voter not set");
-//     //keys.validateEDDSAPublicKey(voter);
-//     KeyManager.validateEDDSAPublicKeyHex(voter);
+        final from = _publicKeyHex!;
+        if (from.isEmpty) {
+          throw Exception("from address not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(from);
 
-//     final from = _publicKeyHex!;
-//     if (from.isEmpty) throw Exception("from address not set");
-//     //keys.validateEDDSAPublicKey(from);
-//     KeyManager.validateEDDSAPublicKeyHex(from);
+        if (subjectType.isEmpty) {
+          throw Exception("subject_type not set");
+        }
 
-//     final to = address;
-//     final contractVersion = REVIEW_CONTRACT_V1;
-//     final method = METHOD_VOTE_HELPFUL;
-//     final data = {"address": address, "voter": voter, "is_helpful": isHelpful};
+        if (subjectID.isEmpty) {
+          throw Exception("subject_id not set");
+        }
 
-//     return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-//   }
+        if (rating != 0 && (rating < 1 || rating > 5)) {
+          throw Exception("rating must be between 1 and 5");
+        }
 
-//   Future<ContractOutput> reportReview(String address, String reporter, String reason) async {
-//     if (address.isEmpty) throw Exception("address not set");
-//     KeyManager.validateEDDSAPublicKeyHex(address);
-//     //keys.validateEDDSAPublicKey(address);
-//     if (reporter.isEmpty) throw Exception("reporter not set");
-//     KeyManager.validateEDDSAPublicKeyHex(reporter);
-//     //keys.validateEDDSAPublicKey(reporter);
-//     if (reason.isEmpty) throw Exception("reason not set");
+        final to = address;
+        const method = METHOD_UPDATE_REVIEW;
+        final uuid7 = newUUID7();
+        const int version = 1;
 
-//     final from = _publicKeyHex!;
-//     if (from.isEmpty) throw Exception("from address not set");
-//     //keys.validateEDDSAPublicKey(from);
-//     KeyManager.validateEDDSAPublicKeyHex(from);
-//     final to = address;
-//     final contractVersion = REVIEW_CONTRACT_V1;
-//     final method = METHOD_REPORT_REVIEW;
-//     final data = {"address": address, "reporter": reporter, "reason": reason};
+        final data = <String, dynamic>{
+          "address": address,
+          "subject_type": subjectType,
+          "subject_id": subjectID,
+          "rating": rating,
+          "comment": comment ?? "",
+          "tags": tags ?? <String, String>{},
+          "media_hashes": mediaHashes ?? <String>[],
+        };
 
-//     return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-//   }
+        if (startAt != null) {
+          data["start_at"] = startAt.toIso8601String();
+        }
 
-//   Future<ContractOutput> moderateReview(String address, String action, String note) async {
-//     if (address.isEmpty) throw Exception("address not set");
-//     //keys.validateEDDSAPublicKey(address);
-//     KeyManager.validateEDDSAPublicKeyHex(address);
-//     if (action.isEmpty) throw Exception("action not set");
+        if (expiredAt != null) {
+          data["expired_at"] = expiredAt.toIso8601String();
+        }
 
-//     final from = _publicKeyHex!;
-//     if (from.isEmpty) throw Exception("from address not set");
-//     //keys.validateEDDSAPublicKey(from);
-//     KeyManager.validateEDDSAPublicKeyHex(from);
+        return signAndSendTransaction(
+          chainID: _chainID,
+          from: from,
+          to: to,
+          method: method,
+          data: data,
+          version: version,
+          uuid7: uuid7,
+        );
+      }
 
-//     final to = address;
-//     final contractVersion = REVIEW_CONTRACT_V1;
-//     final method = METHOD_MODERATE_REVIEW;
-//     final data = {"address": address, "action": action, "note": note};
+      Future<ContractOutput> hideReview(String address, bool hidden) async {
+        if (address.isEmpty) {
+          throw Exception("address not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(address);
 
-//     return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-//   }
+        final from = _publicKeyHex!;
+        if (from.isEmpty) {
+          throw Exception("from address not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(from);
 
-//   Future<ContractOutput> getReview(String address) async {
-//     final from = _publicKeyHex!;
-//     if (from.isEmpty) throw Exception("from address not set");
-//     //keys.validateEDDSAPublicKey(from);
-//     KeyManager.validateEDDSAPublicKeyHex(from);
-//     if (address.isEmpty) throw Exception("review address must be set");
-//     //keys.validateEDDSAPublicKey(address);
-//     KeyManager.validateEDDSAPublicKeyHex(address);
-//     final contractVersion = REVIEW_CONTRACT_V1;
-//     final method = METHOD_GET_REVIEW;
-//     final data = {"address": address};
+        final to = address;
+        const method = METHOD_HIDE_REVIEW;
+        final uuid7 = newUUID7();
+        const int version = 1;
 
-//     return getState(contractVersion: contractVersion, method: method, data: data);
-//   }
+        final data = <String, dynamic>{
+          "address": address,
+          "hidden": hidden,
+        };
 
-// Future<ContractOutput> listReviews({
-//   String owner = '',
-//   String reviewer = '',
-//   String reviewee = '',
-//   String subjectType = '',
-//   String subjectId = '',
-//   bool? includeHidden,
-//   int minRating = 0,
-//   int maxRating = 0,
-//   int page = 1,
-//   int limit = 10,
-//   bool asc = true,
-// }) async {
-//   final from = _publicKeyHex!;
-//   if (from.isEmpty) {
-//     throw Exception('from address not set');
-//   }
+        return signAndSendTransaction(
+          chainID: _chainID,
+          from: from,
+          to: to,
+          method: method,
+          data: data,
+          version: version,
+          uuid7: uuid7,
+        );
+      }
 
-//   KeyManager.validateEDDSAPublicKeyHex(from);
+      Future<ContractOutput> voteHelpful(
+        String address,
+        String voter,
+        bool isHelpful,
+      ) async {
+        if (address.isEmpty) {
+          throw Exception("address not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(address);
 
-//   // Validações opcionais
-//   if (owner.isNotEmpty) {
-//     KeyManager.validateEDDSAPublicKeyHex(owner);
-//   }
-//   if (reviewer.isNotEmpty) {
-//     KeyManager.validateEDDSAPublicKeyHex(reviewer);
-//   }
-//   if (reviewee.isNotEmpty) {
-//     KeyManager.validateEDDSAPublicKeyHex(reviewee);
-//   }
+        if (voter.isEmpty) {
+          throw Exception("voter not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(voter);
 
-//   if (page < 1) throw Exception('page must be greater than 0');
-//   if (limit < 1) throw Exception('limit must be greater than 0');
-//   if (minRating < 0 || minRating > 5) {
-//     throw Exception('min_rating must be between 0 and 5');
-//   }
-//   if (maxRating < 0 || maxRating > 5) {
-//     throw Exception('max_rating must be between 0 and 5');
-//   }
-//   if (maxRating != 0 && minRating > maxRating) {
-//     throw Exception('min_rating cannot be greater than max_rating');
-//   }
+        final from = _publicKeyHex!;
+        if (from.isEmpty) {
+          throw Exception("from address not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(from);
 
-//   const contractVersion = REVIEW_CONTRACT_V1;
-//   const method = METHOD_LIST_REVIEWS;
+        final to = address;
+        const method = METHOD_VOTE_HELPFUL;
+        final uuid7 = newUUID7();
+        const int version = 1;
 
-//   final data = <String, dynamic>{
-//     "reviewer": reviewer,
-//     "reviewee": reviewee,
-//     "subject_id": subjectId,
-//     "subject_type": subjectType,
-//     "min_rating": minRating,
-//     "max_rating": maxRating,
-//     "page": page,
-//     "limit": limit,
-//     "ascending": asc,
-//   };
+        final data = <String, dynamic>{
+          "address": address,
+          "voter": voter,
+          "is_helpful": isHelpful,
+        };
 
-//   if (includeHidden != null) {
-//     data["include_hidden"] = includeHidden;
-//   }
+        return signAndSendTransaction(
+          chainID: _chainID,
+          from: from,
+          to: to,
+          method: method,
+          data: data,
+          version: version,
+          uuid7: uuid7,
+        );
+      }
 
-//   return await getState(contractVersion: contractVersion, method: method, data: data);
-// }
+      Future<ContractOutput> reportReview(
+        String address,
+        String reporter,
+        String reason,
+      ) async {
+        if (address.isEmpty) {
+          throw Exception("address not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(address);
 
+        if (reporter.isEmpty) {
+          throw Exception("reporter not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(reporter);
+
+        if (reason.isEmpty) {
+          throw Exception("reason not set");
+        }
+
+        final from = _publicKeyHex!;
+        if (from.isEmpty) {
+          throw Exception("from address not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(from);
+
+        final to = address;
+        const method = METHOD_REPORT_REVIEW;
+        final uuid7 = newUUID7();
+        const int version = 1;
+
+        final data = <String, dynamic>{
+          "address": address,
+          "reporter": reporter,
+          "reason": reason,
+        };
+
+        return signAndSendTransaction(
+          chainID: _chainID,
+          from: from,
+          to: to,
+          method: method,
+          data: data,
+          version: version,
+          uuid7: uuid7,
+        );
+      }
+
+      Future<ContractOutput> moderateReview(
+        String address,
+        String action,
+        String note,
+      ) async {
+        if (address.isEmpty) {
+          throw Exception("address not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(address);
+
+        if (action.isEmpty) {
+          throw Exception("action not set");
+        }
+
+        final from = _publicKeyHex!;
+        if (from.isEmpty) {
+          throw Exception("from address not set");
+        }
+        KeyManager.validateEDDSAPublicKeyHex(from);
+
+        final to = address;
+        const method = METHOD_MODERATE_REVIEW;
+        final uuid7 = newUUID7();
+        const int version = 1;
+
+        final data = <String, dynamic>{
+          "address": address,
+          "action": action,
+          "note": note,
+        };
+
+        return signAndSendTransaction(
+          chainID: _chainID,
+          from: from,
+          to: to,
+          method: method,
+          data: data,
+          version: version,
+          uuid7: uuid7,
+        );
+      }
+
+      Future<ContractOutput> listReviews({
+        String reviewer = '',
+        String reviewee = '',
+        String subjectType = '',
+        String subjectID = '',
+        bool? includeHidden,
+        int minRating = 0,
+        int maxRating = 0,
+        int page = 1,
+        int limit = 10,
+        bool asc = true,
+      }) async {
+        final from = _publicKeyHex!;
+        if (from.isEmpty) {
+          throw Exception('from address not set');
+        }
+
+        KeyManager.validateEDDSAPublicKeyHex(from);
+
+        if (reviewer.isNotEmpty) {
+          KeyManager.validateEDDSAPublicKeyHex(reviewer);
+        }
+
+        if (reviewee.isNotEmpty) {
+          KeyManager.validateEDDSAPublicKeyHex(reviewee);
+        }
+
+        if (page < 1) {
+          throw Exception('page must be greater than 0');
+        }
+
+        if (limit < 1) {
+          throw Exception('limit must be greater than 0');
+        }
+
+        if (minRating < 0 || minRating > 5) {
+          throw Exception('min_rating must be between 0 and 5');
+        }
+
+        if (maxRating < 0 || maxRating > 5) {
+          throw Exception('max_rating must be between 0 and 5');
+        }
+
+        if (maxRating != 0 && minRating > maxRating) {
+          throw Exception('min_rating cannot be greater than max_rating');
+        }
+
+        const method = METHOD_LIST_REVIEWS;
+        final data = <String, dynamic>{
+          "reviewer": reviewer,
+          "reviewee": reviewee,
+          "subject_type": subjectType,
+          "subject_id": subjectID,
+          "min_rating": minRating,
+          "max_rating": maxRating,
+          "page": page,
+          "limit": limit,
+          "ascending": asc,
+          "contract_version": REVIEW_CONTRACT_V1,
+        };
+
+        if (includeHidden != null) {
+          data["include_hidden"] = includeHidden;
+        }
+        return getState(
+          to: '',
+          method: method,
+          data: data,
+        );
+      }
 }
