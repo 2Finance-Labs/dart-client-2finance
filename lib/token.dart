@@ -17,7 +17,8 @@ extension Token on TwoFinanceBlockchain {
       required Map<String, String> tags,
       required String creator,
       required String creatorWebsite,
-      required AccessPolicy accessPolicy,
+      required Map<String, bool> allowedUsers,
+      required Map<String, bool> blockedUsers,
       required Map<String, dynamic> frozenAccounts,
       required List<Map<String, dynamic>> feeTiersList,
       required String feeAddress,
@@ -45,7 +46,8 @@ extension Token on TwoFinanceBlockchain {
 
     KeyManager.validateEDDSAPublicKeyHex(feeAddress);
 
-    validateUserMap(accessPolicy.users, 'access policy');
+    validateUserMap(allowedUsers, 'allowed users');
+    validateUserMap(blockedUsers, 'blocked users');
 
     final from = publicKeyHex ?? '';
     if (from.isEmpty) throw ArgumentError('from address not set');
@@ -70,8 +72,8 @@ extension Token on TwoFinanceBlockchain {
       "tags": tags,
       "creator": creator,
       "creator_website": creatorWebsite,
-      "access_mode": accessPolicy.mode,
-      "access_users": accessPolicy.users,
+      "allowed_users": allowedUsers,
+      "blocked_users": blockedUsers,
       "frozen_accounts": frozenAccounts,
       "freeze_authority_revoked": freezeAuthorityRevoked,
       "mint_authority_revoked": mintAuthorityRevoked,
@@ -244,10 +246,9 @@ extension Token on TwoFinanceBlockchain {
       chainID: _chainID,
       from: from,
       to: tokenAddress,
-      method: METHOD_ADD_ACCESS_USERS,
+      method: METHOD_ADD_ALLOWED_USERS,
       data: {
-        "access_mode": "ALLOW_ACCESS_MODE",
-        "access_users": users,
+        "allowed_users": users,
       },
       version: version,
       uuid7: uuid7,
@@ -270,10 +271,9 @@ extension Token on TwoFinanceBlockchain {
       chainID: _chainID,
       from: from,
       to: tokenAddress,
-      method: METHOD_REMOVE_ACCESS_USERS,
+      method: METHOD_REMOVE_ALLOWED_USERS,
       data: {
-        "access_mode": "ALLOW_ACCESS_MODE",
-        "access_users": users,
+        "allowed_users": users,
       },
       version: version,
       uuid7: uuid7,
@@ -296,10 +296,9 @@ extension Token on TwoFinanceBlockchain {
       chainID: _chainID,
       from: from,
       to: tokenAddress,
-      method: METHOD_ADD_ACCESS_USERS,
+      method: METHOD_ADD_BLOCKED_USERS,
       data: {
-        "access_mode": "DENY_ACCESS_MODE",
-        "access_users": users,
+        "blocked_users": users,
       },
       version: version,
       uuid7: uuid7,
@@ -322,34 +321,9 @@ extension Token on TwoFinanceBlockchain {
       chainID: _chainID,
       from: from,
       to: tokenAddress,
-      method: METHOD_REMOVE_ACCESS_USERS,
+      method: METHOD_REMOVE_BLOCKED_USERS,
       data: {
-        "access_mode": "DENY_ACCESS_MODE",
-        "access_users": users,
-      },
-      version: version,
-      uuid7: uuid7,
-    );
-  }
-
-  Future<ContractOutput> changeAccessMode(String tokenAddress, String accessMode) async {
-    final from = publicKeyHex ?? '';
-    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
-    if (accessMode.isEmpty) throw ArgumentError('access mode not set');
-
-    KeyManager.validateEDDSAPublicKeyHex(from);
-    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
-
-    final uuid7 = newUUID7();
-    const int version = 1;
-
-    return signAndSendTransaction(
-      chainID: _chainID,
-      from: from,
-      to: tokenAddress,
-      method: METHOD_CHANGE_ACCESS_MODE,
-      data: {
-        "access_mode": accessMode,
+        "blocked_users": users,
       },
       version: version,
       uuid7: uuid7,
@@ -473,6 +447,55 @@ extension Token on TwoFinanceBlockchain {
     );
   }
 
+
+    Future<ContractOutput> freezeWallet(String tokenAddress, String wallet) async {
+    final from = publicKeyHex ?? '';
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+    if (wallet.isEmpty) throw ArgumentError('wallet not set');
+
+    KeyManager.validateEDDSAPublicKeyHex(from);
+    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    KeyManager.validateEDDSAPublicKeyHex(wallet);
+
+    final uuid7 = newUUID7();
+    const int version = 1;
+
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: tokenAddress,
+      method: METHOD_FREEZE_WALLET,
+      data: {"wallet": wallet},
+      version: version,
+      uuid7: uuid7,
+    );
+  }
+
+  Future<ContractOutput> unfreezeWallet(String tokenAddress, String wallet) async {
+    final from = publicKeyHex ?? '';
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+    if (wallet.isEmpty) throw ArgumentError('wallet not set');
+
+    KeyManager.validateEDDSAPublicKeyHex(from);
+    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    KeyManager.validateEDDSAPublicKeyHex(wallet);
+
+    final uuid7 = newUUID7();
+    const int version = 1;
+
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: tokenAddress,
+      method: METHOD_UNFREEZE_WALLET,
+      data: {"wallet": wallet},
+      version: version,
+      uuid7: uuid7,
+    );
+  }
+
+
+
   Future<ContractOutput> pauseToken(String tokenAddress) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
@@ -594,6 +617,27 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_TRANSFERABLE_TOKEN,
+      data: {"transferable": transferable},
+      version: version,
+      uuid7: uuid7,
+    );
+  }
+
+  Future<ContractOutput> untransferableToken(String tokenAddress, bool transferable) async {
+    final from = publicKeyHex ?? '';
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+
+    KeyManager.validateEDDSAPublicKeyHex(from);
+    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+
+    final uuid7 = newUUID7();
+    const int version = 1;
+
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: tokenAddress,
+      method: METHOD_UNTRANSFERABLE_TOKEN,
       data: {"transferable": transferable},
       version: version,
       uuid7: uuid7,

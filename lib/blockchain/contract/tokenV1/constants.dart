@@ -8,9 +8,12 @@ const String METHOD_MINT_TOKEN = "mint_Token";
 const String METHOD_BURN_TOKEN = "burn_Token";
 const String METHOD_TRANSFER_TOKEN = "transfer_Token";
 
-const String METHOD_ADD_ACCESS_USERS = "add_Access_Users";
-const String METHOD_REMOVE_ACCESS_USERS = "remove_Access_Users";
-const String METHOD_CHANGE_ACCESS_MODE = "change_Access_Mode";
+//const String METHOD_CHANGE_ACCESS_MODE = "change_Access_Mode";
+
+const String METHOD_ADD_ALLOWED_USERS = "add_Allowed_Users";
+const String METHOD_REMOVE_ALLOWED_USERS = "remove_Allowed_Users";
+const String METHOD_ADD_BLOCKED_USERS = "add_Blocked_Users";
+const String METHOD_REMOVE_BLOCKED_USERS = "remove_Blocked_Users";
 
 
 const String METHOD_REVOKE_FREEZE_AUTHORITY = "revoke_FreezeAuthority";
@@ -24,7 +27,9 @@ const String METHOD_UPDATE_FEE_TIERS = "update_FeeTiers";
 const String METHOD_UPDATE_FEE_ADDRESS = "update_FeeAddress";
 const String METHOD_UPDATE_GLB_FILE = "update_GLB_File";
 const String METHOD_TRANSFERABLE_TOKEN = "transferable_token";
-const String METHOD_UNTRANSFERABLE_TOKEN = "untransferable_token";
+const String METHOD_UNTRANSFERABLE_TOKEN = "untransferable_Token";
+const String METHOD_FREEZE_WALLET = "freeze_wallet";
+const String METHOD_UNFREEZE_WALLET = "unfreeze_wallet";
 
 const String METHOD_GET_TOKEN = "get_Token";
 const String METHOD_LIST_TOKENS = "list_Tokens";

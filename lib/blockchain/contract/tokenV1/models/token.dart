@@ -29,6 +29,9 @@ class TokenState {
 
   final AccessPolicy? accessPolicy;
 
+  final Map<String, bool>? allowedUsers;
+  final Map<String, bool>? blockedUsers;
+
   final Map<String, bool>? frozenAccounts;
 
   // Authority revocation flags
@@ -65,6 +68,8 @@ class TokenState {
     this.creator,
     this.creatorWebsite,
     this.accessPolicy,
+    this.allowedUsers,
+    this.blockedUsers,
     this.frozenAccounts,
     this.freezeAuthorityRevoked,
     this.mintAuthorityRevoked,
@@ -114,6 +119,10 @@ class TokenState {
             ),
           )
         : null),
+      allowedUsers: (json['allowed_users'] as Map?)
+          ?.map((k, v) => MapEntry(k.toString(), v as bool)),
+      blockedUsers: (json['blocked_users'] as Map?)
+          ?.map((k, v) => MapEntry(k.toString(), v as bool)),  
       frozenAccounts: (json['frozen_accounts'] as Map<String, dynamic>?)
           ?.map((k, v) => MapEntry(k, v as bool)),
       freezeAuthorityRevoked: json['freeze_authority_revoked'] as bool?,
@@ -152,6 +161,8 @@ class TokenState {
       'creator': creator,
       'creator_website': creatorWebsite,
       'access_policy': accessPolicy?.toJson(),
+      'allowed_users': allowedUsers,
+      'blocked_users': blockedUsers,
       'frozen_accounts': frozenAccounts,
       'freeze_authority_revoked': freezeAuthorityRevoked,
       'mint_authority_revoked': mintAuthorityRevoked,
