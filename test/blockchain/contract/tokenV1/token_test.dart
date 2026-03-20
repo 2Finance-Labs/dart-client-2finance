@@ -15,6 +15,7 @@ import 'package:two_finance_blockchain/blockchain/utils/decimals.dart';
 import 'package:two_finance_blockchain/blockchain/utils/random.dart';
 import 'package:two_finance_blockchain/two_finance_blockchain.dart';
 import 'package:two_finance_blockchain/blockchain/utils/marshal.dart';
+import 'package:two_finance_blockchain/blockchain/utils/event.dart';
 // helpers
 import '../../../helpers/helpers.dart';
 
@@ -96,11 +97,33 @@ void main() {
         expect(addLog.contractAddress, equals(addr));
         expect(addLog.logType, equals('Token_Created'));
 
-        final addEvent = _decodeEvent(addLog.event);
+        final addEvent = decodeEvent(addLog.event);
         expect(addEvent['address'], equals(addr));
         expect(addEvent['symbol'], equals(symbol));
         expect(addEvent['name'], equals('Test Token'));
         expect(addEvent['owner'], equals(owner));
+
+        final addMintLog = outAdd.logs![1];
+        expect(addMintLog.logType, equals('Token_Minted_FT'));
+        expect(addMintLog.contractAddress, equals(addr));
+
+        final addMintEvent = decodeEvent(addMintLog.event);
+
+        expect(addMintEvent['token_address'], equals(addr));
+        expect(addMintEvent['mint_to'], equals(owner));
+        expect(addMintEvent['amount'].toString(), equals('1000'));
+        expect(addMintEvent['token_type'], equals(TOKEN_TYPE_FUNGIBLE));
+
+        final addBalanceLog = outAdd.logs![2];
+        expect(addBalanceLog.logType, equals('Token_BalanceIncreased_FT'));
+        expect(addBalanceLog.contractAddress, equals(addr));
+
+        final addBalanceEvent = decodeEvent(addBalanceLog.event);
+
+        expect(addBalanceEvent['token_address'], equals(addr));
+        expect(addBalanceEvent['owner_address'], equals(owner));
+        expect(addBalanceEvent['amount'].toString(), equals('1000'));
+        expect(addBalanceEvent['token_type'], equals(TOKEN_TYPE_FUNGIBLE));
 
         final tokenAddress = addr;
         final outGet = await c.getToken(tokenAddress: tokenAddress);
@@ -174,7 +197,6 @@ void main() {
        expect(tokenState.assetGlbUri, equals("https://example.com/asset.glb"));
        expect(tokenState.tokenType, equals(TOKEN_TYPE_FUNGIBLE));
        expect(tokenState.transferable, isTrue);
-       expect(tokenState.stablecoin, isFalse);
 
       // final token2 = unmarshalState(
       //   outGet.states!.first.object,
@@ -303,6 +325,42 @@ void main() {
        expect(outMint, isA<ContractOutput>());
        expect(outMint.logs, isNotNull);
        expect(outMint.logs!, isNotEmpty);
+
+       expect(outMint.logs!.length, equals(3));
+       expect(outMint.logs![0].logType, equals('Token_Minted_FT'));
+       expect(outMint.logs![1].logType, equals('Token_TotalSupplyIncreased'));
+       expect(outMint.logs![2].logType, equals('Token_BalanceIncreased_FT'));
+
+       final mintLog = outMint.logs!.first;
+       expect(mintLog.logType, equals('Token_Minted_FT'));
+       expect(mintLog.contractAddress, equals(tokenAddress));
+
+       final mintEvent = decodeEvent(mintLog.event);
+
+       expect(mintEvent['token_address'], equals(tokenAddress));
+       expect(mintEvent['mint_to'], equals(owner));
+       expect(mintEvent['amount'].toString(), equals('150'));
+       expect(mintEvent['token_type'], equals(TOKEN_TYPE_FUNGIBLE));
+
+       final mintSupplyLog = outMint.logs![1];
+       expect(mintSupplyLog.logType, equals('Token_TotalSupplyIncreased'));
+       expect(mintSupplyLog.contractAddress, equals(tokenAddress));
+
+       final mintSupplyEvent = decodeEvent(mintSupplyLog.event);
+
+       expect(mintSupplyEvent['token_address'], equals(tokenAddress));
+       expect(mintSupplyEvent['amount'].toString(), equals('150'));
+
+       final mintBalanceLog = outMint.logs![2];
+       expect(mintBalanceLog.logType, equals('Token_BalanceIncreased_FT'));
+       expect(mintBalanceLog.contractAddress, equals(tokenAddress));
+
+       final mintBalanceEvent = decodeEvent(mintBalanceLog.event);
+
+       expect(mintBalanceEvent['token_address'], equals(tokenAddress));
+       expect(mintBalanceEvent['owner_address'], equals(owner));
+       expect(mintBalanceEvent['amount'].toString(), equals('150'));
+       expect(mintBalanceEvent['token_type'], equals(TOKEN_TYPE_FUNGIBLE));
       
 
       // // balance do owner
@@ -417,6 +475,71 @@ void main() {
       expect(outTransfer.logs, isNotNull);
       expect(outTransfer.logs!, isNotEmpty);
 
+      expect(outTransfer.logs!.length, equals(5));
+      expect(outTransfer.logs![0].logType, equals('Token_Transferred_FT'));
+      expect(outTransfer.logs![1].logType, equals('Token_BalanceDecreased_FT'));
+      expect(outTransfer.logs![2].logType, equals('Token_BalanceIncreased_FT'));
+      expect(outTransfer.logs![3].logType, equals('Token_Fee'));
+      expect(outTransfer.logs![4].logType, equals('Token_BalanceIncreased_FT'));
+
+      final transferLog = outTransfer.logs!.first;
+      expect(transferLog.logType, equals('Token_Transferred_FT'));
+      expect(transferLog.contractAddress, equals(tokenAddress));
+
+      final transferEvent = decodeEvent(transferLog.event);
+
+      expect(transferEvent['token_address'], equals(tokenAddress));
+      expect(transferEvent['from_address'], equals(owner));
+      expect(transferEvent['to_address'], equals(receiverTransfer));
+      expect(transferEvent['amount'].toString(), equals('600'));
+      expect(transferEvent['token_type'], equals(TOKEN_TYPE_FUNGIBLE));
+
+      final transferDecreaseLog = outTransfer.logs![1];
+      expect(transferDecreaseLog.logType, equals('Token_BalanceDecreased_FT'));
+      expect(transferDecreaseLog.contractAddress, equals(tokenAddress));
+
+      final transferDecreaseEvent = decodeEvent(transferDecreaseLog.event);
+
+      expect(transferDecreaseEvent['token_address'], equals(tokenAddress));
+      expect(transferDecreaseEvent['owner_address'], equals(owner));
+      expect(transferDecreaseEvent['amount'].toString(), equals('600'));
+      expect(transferDecreaseEvent['token_type'], equals(TOKEN_TYPE_FUNGIBLE));
+
+      final transferIncreaseLog = outTransfer.logs![2];
+      expect(transferIncreaseLog.logType, equals('Token_BalanceIncreased_FT'));
+      expect(transferIncreaseLog.contractAddress, equals(tokenAddress));
+
+      final transferIncreaseEvent = decodeEvent(transferIncreaseLog.event);
+
+      expect(transferIncreaseEvent['token_address'], equals(tokenAddress));
+      expect(transferIncreaseEvent['owner_address'], equals(receiverTransfer));
+      expect(transferIncreaseEvent['amount'].toString(), equals('597'));
+      expect(transferIncreaseEvent['token_type'], equals(TOKEN_TYPE_FUNGIBLE));
+
+      final transferFeeLog = outTransfer.logs![3];
+      expect(transferFeeLog.logType, equals('Token_Fee'));
+      expect(transferFeeLog.contractAddress, equals(tokenAddress));
+
+      final transferFeeEvent = decodeEvent(transferFeeLog.event);
+
+      expect(transferFeeEvent['token_address'], equals(tokenAddress));
+      expect(transferFeeEvent['amount'].toString(), equals('3'));
+      expect(transferFeeEvent['fee_address'], equals(feeAddress));
+      expect(transferFeeEvent['amount_after_fee'].toString(), equals('597'));
+      expect(transferFeeEvent['fee_tiers'], isA<List>());
+      expect((transferFeeEvent['fee_tiers'] as List), isNotEmpty);
+
+      final transferFeeIncreaseLog = outTransfer.logs![4];
+      expect(transferFeeIncreaseLog.logType, equals('Token_BalanceIncreased_FT'));
+      expect(transferFeeIncreaseLog.contractAddress, equals(tokenAddress));
+
+      final transferFeeIncreaseEvent = decodeEvent(transferFeeIncreaseLog.event);
+
+      expect(transferFeeIncreaseEvent['token_address'], equals(tokenAddress));
+      expect(transferFeeIncreaseEvent['owner_address'], equals(feeAddress));
+      expect(transferFeeIncreaseEvent['amount'].toString(), equals('3'));
+      expect(transferFeeIncreaseEvent['token_type'], equals(TOKEN_TYPE_FUNGIBLE));
+
       // saldo do owner após transfer
       final outOwnerBalAfterTransfer = await c.getTokenBalance(
         tokenAddress: tokenAddress,
@@ -488,6 +611,42 @@ void main() {
       expect(outBurn.logs, isNotNull);
       expect(outBurn.logs!, isNotEmpty);
 
+      expect(outBurn.logs!.length, equals(3));
+      expect(outBurn.logs![0].logType, equals('Token_Burned_FT'));
+      expect(outBurn.logs![1].logType, equals('Token_TotalSupplyDecreased'));
+      expect(outBurn.logs![2].logType, equals('Token_BalanceDecreased_FT'));
+
+      final burnLog = outBurn.logs!.first;
+      expect(burnLog.logType, equals('Token_Burned_FT'));
+      expect(burnLog.contractAddress, equals(tokenAddress));
+
+      final burnEvent = decodeEvent(burnLog.event);
+
+      expect(burnEvent['token_address'], equals(tokenAddress));
+      expect(burnEvent['burn_from'], equals(owner));
+      expect(burnEvent['amount'].toString(), equals('25'));
+      expect(burnEvent['token_type'], equals(TOKEN_TYPE_FUNGIBLE));
+
+      final burnSupplyLog = outBurn.logs![1];
+      expect(burnSupplyLog.logType, equals('Token_TotalSupplyDecreased'));
+      expect(burnSupplyLog.contractAddress, equals(tokenAddress));
+
+      final burnSupplyEvent = decodeEvent(burnSupplyLog.event);
+
+      expect(burnSupplyEvent['token_address'], equals(tokenAddress));
+      expect(burnSupplyEvent['amount'].toString(), equals('25'));
+
+      final burnBalanceLog = outBurn.logs![2];
+      expect(burnBalanceLog.logType, equals('Token_BalanceDecreased_FT'));
+      expect(burnBalanceLog.contractAddress, equals(tokenAddress));
+
+      final burnBalanceEvent = decodeEvent(burnBalanceLog.event);
+
+      expect(burnBalanceEvent['token_address'], equals(tokenAddress));
+      expect(burnBalanceEvent['owner_address'], equals(owner));
+      expect(burnBalanceEvent['amount'].toString(), equals('25'));
+      expect(burnBalanceEvent['token_type'], equals(TOKEN_TYPE_FUNGIBLE));
+
       // saldo do owner depois do burn
       final outBalAfterBurn = await c.getTokenBalance(
         tokenAddress: tokenAddress,
@@ -520,7 +679,7 @@ void main() {
         // ------------------
         // ACCESS CONTROL
         // ------------------
-        // Ajuste estes nomes se o backend estiver retornando logs específicos
+        
         const allowedUsersAddedLogType = 'Token_AllowedUsersAdded';
         const allowedUsersRemovedLogType = 'Token_AllowedUsersRemoved';
         const blockedUsersAddedLogType = 'Token_BlockedUsersAdded';
@@ -545,10 +704,10 @@ void main() {
         expect(allowLog.contractAddress, equals(tokenAddress));
         expect(allowLog.logType, equals(allowedUsersAddedLogType));
 
-        final allowEvent = _decodeEvent(allowLog.event);
+        final allowEvent = decodeEvent(allowLog.event);
         expect(allowEvent['address'], equals(tokenAddress));
 
-        final allowEventAllowedUsers = _asMap(allowEvent['allowed_users']);
+        final allowEventAllowedUsers = asMap(allowEvent['allowed_users']);
         expect(allowEventAllowedUsers[allowUser], isTrue);
 
         final outGetAfterAllow = await c.getToken(tokenAddress: tokenAddress);
@@ -580,10 +739,10 @@ void main() {
         expect(removeAllowLog.contractAddress, equals(tokenAddress));
         expect(removeAllowLog.logType, equals(allowedUsersRemovedLogType));
 
-        final removeAllowEvent = _decodeEvent(removeAllowLog.event);
+        final removeAllowEvent = decodeEvent(removeAllowLog.event);
         expect(removeAllowEvent['address'], equals(tokenAddress));
 
-        final removeAllowEventAllowedUsers = _asMap(removeAllowEvent['allowed_users']);
+        final removeAllowEventAllowedUsers = asMap(removeAllowEvent['allowed_users']);
         expect(removeAllowEventAllowedUsers.containsKey(allowUser), isTrue);
         expect(removeAllowEventAllowedUsers[allowUser], isTrue);
 
@@ -618,10 +777,10 @@ void main() {
         expect(blockLog.contractAddress, equals(tokenAddress));
         expect(blockLog.logType, equals(blockedUsersAddedLogType));
 
-        final blockEvent = _decodeEvent(blockLog.event);
+        final blockEvent = decodeEvent(blockLog.event);
         expect(blockEvent['address'], equals(tokenAddress));
 
-        final blockEventBlockedUsers = _asMap(blockEvent['blocked_users']);
+        final blockEventBlockedUsers = asMap(blockEvent['blocked_users']);
         expect(blockEventBlockedUsers[receiverTransfer], isTrue);
 
         final outGetAfterBlock = await c.getToken(tokenAddress: tokenAddress);
@@ -653,10 +812,10 @@ void main() {
         expect(unblockLog.contractAddress, equals(tokenAddress));
         expect(unblockLog.logType, equals(blockedUsersRemovedLogType));
 
-        final unblockEvent = _decodeEvent(unblockLog.event);
+        final unblockEvent = decodeEvent(unblockLog.event);
         expect(unblockEvent['address'], equals(tokenAddress));
 
-        final unblockEventBlockedUsers = _asMap(unblockEvent['blocked_users']);
+        final unblockEventBlockedUsers = asMap(unblockEvent['blocked_users']);
         expect(unblockEventBlockedUsers.containsKey(receiverTransfer), isTrue);
         expect(unblockEventBlockedUsers[receiverTransfer], isTrue);
 
@@ -687,9 +846,7 @@ void main() {
         expect(pauseLog.logType, equals('Token_Paused'));
         expect(pauseLog.contractAddress, equals(tokenAddress));
 
-        final pauseEvent = jsonDecode(
-          utf8.decode(base64Decode(pauseLog.event)),
-        ) as Map<String, dynamic>;
+        final pauseEvent = decodeEvent(pauseLog.event);
 
         expect(pauseEvent['token_address'], equals(tokenAddress));
         expect(pauseEvent['enabled'], isTrue);
@@ -719,9 +876,7 @@ void main() {
         expect(unpauseLog.logType, equals('Token_Unpaused'));
         expect(unpauseLog.contractAddress, equals(tokenAddress));
 
-        final unpauseEvent = jsonDecode(
-          utf8.decode(base64Decode(unpauseLog.event)),
-        ) as Map<String, dynamic>;
+        final unpauseEvent = decodeEvent(unpauseLog.event);
 
         expect(unpauseEvent['token_address'], equals(tokenAddress));
 
@@ -760,9 +915,7 @@ void main() {
         expect(updateFeeTiersLog.logType, equals('Token_FeeUpdated'));
         expect(updateFeeTiersLog.contractAddress, equals(tokenAddress));
 
-        final updateFeeTiersEvent = jsonDecode(
-        utf8.decode(base64Decode(updateFeeTiersLog.event)),
-        ) as Map<String, dynamic>;
+        final updateFeeTiersEvent = decodeEvent(updateFeeTiersLog.event);
 
         expect(updateFeeTiersEvent['fee_tiers_list'], isA<List>());
 
@@ -815,6 +968,15 @@ void main() {
         expect(outUpdateFeeAddress.logs, isNotNull);
         expect(outUpdateFeeAddress.logs!, isNotEmpty);
 
+        final updateFeeAddressLog = outUpdateFeeAddress.logs!.first;
+        expect(updateFeeAddressLog.logType, equals('Token_FeeAddressUpdated'));
+        expect(updateFeeAddressLog.contractAddress, equals(tokenAddress));
+
+        final updateFeeAddressEvent = decodeEvent(updateFeeAddressLog.event);
+
+        expect(updateFeeAddressEvent['token_address'], equals(tokenAddress));
+        expect(updateFeeAddressEvent['fee_address'], equals(newFeeAddress));
+
         final outGetUpdatedFeeAddress = await c.getToken(
           tokenAddress: tokenAddress,
         );
@@ -858,6 +1020,32 @@ void main() {
         expect(outUpdateMetadata, isA<ContractOutput>());
         expect(outUpdateMetadata.logs, isNotNull);
         expect(outUpdateMetadata.logs!, isNotEmpty);
+
+        final updateMetadataLog = outUpdateMetadata.logs!.first;
+        expect(updateMetadataLog.logType, equals('Token_MetadataUpdated'));
+        expect(updateMetadataLog.contractAddress, equals(tokenAddress));
+
+        final updateMetadataEvent = decodeEvent(updateMetadataLog.event);
+
+        expect(updateMetadataEvent['address'], equals(tokenAddress));
+        expect(updateMetadataEvent['symbol'], equals(newSymbol));
+        expect(updateMetadataEvent['name'], equals('2Finance New'));
+        expect(updateMetadataEvent['decimals'], equals(2));
+        expect(updateMetadataEvent['description'], equals('Updated by tests'));
+        expect(updateMetadataEvent['image'], equals('https://example.com/img.png'));
+        expect(updateMetadataEvent['website'], equals('https://example.com'));
+        expect(updateMetadataEvent['tags_social_media'], equals({
+          'twitter': 'https://x.com/2f',
+        }));
+        expect(updateMetadataEvent['tags_category'], equals({
+          'category': 'DeFi',
+        }));
+        expect(updateMetadataEvent['tags'], equals({
+          'tag1': 'e2e',
+        }));
+        expect(updateMetadataEvent['creator'], equals('Name of creator'));
+        expect(updateMetadataEvent['creator_website'], equals('https://creator'));
+        expect(updateMetadataEvent['expired_at'], isNotNull);
 
         final outGetUpdatedMetadata = await c.getToken(
           tokenAddress: tokenAddress,
@@ -926,9 +1114,7 @@ void main() {
         expect(freezeLog.contractAddress, equals(tokenAddress));
         expect(freezeLog.logType, equals('Token_Freeze_Account'));
 
-        final freezeEvent = jsonDecode(
-          utf8.decode(base64Decode(freezeLog.event)),
-        ) as Map<String, dynamic>;
+        final freezeEvent = decodeEvent(freezeLog.event);
 
         expect(freezeEvent['token_address'], equals(tokenAddress));
 
@@ -967,9 +1153,7 @@ void main() {
         expect(unfreezeLog.contractAddress, equals(tokenAddress));
         expect(unfreezeLog.logType, equals('Token_Unfreeze_Account'));
 
-        final unfreezeEvent = jsonDecode(
-          utf8.decode(base64Decode(unfreezeLog.event)),
-        ) as Map<String, dynamic>;
+        final unfreezeEvent = decodeEvent(unfreezeLog.event);
 
         expect(unfreezeEvent['token_address'], equals(tokenAddress));
 
@@ -1011,6 +1195,15 @@ void main() {
         expect(outUpdateGlbFile.logs, isNotNull);
         expect(outUpdateGlbFile.logs!, isNotEmpty);
 
+        final updateGlbFileLog = outUpdateGlbFile.logs!.first;
+        expect(updateGlbFileLog.logType, equals('Token_UpdateGblFile'));
+        expect(updateGlbFileLog.contractAddress, equals(tokenAddress));
+
+        final updateGlbFileEvent = decodeEvent(updateGlbFileLog.event);
+
+        expect(updateGlbFileEvent['address'], equals(tokenAddress));
+        expect(updateGlbFileEvent['asset_glb_uri'], equals(newGlbUri));
+
         final outGetUpdatedGlb = await c.getToken(
           tokenAddress: tokenAddress,
         );
@@ -1045,9 +1238,7 @@ void main() {
         expect(revokeFreezeLog.logType, equals('Token_FreezeAuthorityRevoked'));
         expect(revokeFreezeLog.contractAddress, equals(tokenAddress));
 
-        final revokeFreezeEvent = jsonDecode(
-          utf8.decode(base64Decode(revokeFreezeLog.event)),
-        ) as Map<String, dynamic>;
+        final revokeFreezeEvent = decodeEvent(revokeFreezeLog.event);
 
         expect(revokeFreezeEvent['address'], equals(tokenAddress));
         expect(revokeFreezeEvent['freeze_authority_revoked'], isTrue);
@@ -1081,9 +1272,7 @@ void main() {
         expect(revokeMintLog.logType, equals('Token_MintAuthorityRevoked'));
         expect(revokeMintLog.contractAddress, equals(tokenAddress));
 
-        final revokeMintEvent = jsonDecode(
-          utf8.decode(base64Decode(revokeMintLog.event)),
-        ) as Map<String, dynamic>;
+        final revokeMintEvent = decodeEvent(revokeMintLog.event);
 
         expect(revokeMintEvent['address'], equals(tokenAddress));
         expect(revokeMintEvent['mint_authority_revoked'], isTrue);
@@ -1117,9 +1306,7 @@ void main() {
         expect(revokeUpdateLog.logType, equals('Token_UpdateAuthorityRevoked'));
         expect(revokeUpdateLog.contractAddress, equals(tokenAddress));
 
-        final revokeUpdateEvent = jsonDecode(
-          utf8.decode(base64Decode(revokeUpdateLog.event)),
-        ) as Map<String, dynamic>;
+        final revokeUpdateEvent = decodeEvent(revokeUpdateLog.event);
 
         expect(revokeUpdateEvent['address'], equals(tokenAddress));
         expect(revokeUpdateEvent['update_authority_revoked'], isTrue);
@@ -1151,13 +1338,3 @@ void main() {
     });
   });
 }
-    Map<String, dynamic> _decodeEvent(String eventBase64) {
-      return jsonDecode(
-        utf8.decode(base64Decode(eventBase64)),
-      ) as Map<String, dynamic>;
-    }
-
-    Map<String, dynamic> _asMap(dynamic value) {
-      if (value == null) return <String, dynamic>{};
-      return Map<String, dynamic>.from(value as Map);
-    }

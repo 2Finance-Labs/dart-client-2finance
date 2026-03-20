@@ -330,30 +330,6 @@ extension Token on TwoFinanceBlockchain {
     );
   }
 
-  //Future<ContractOutput> changeAccessMode(String tokenAddress, String accessMode) async {
-  //  final from = publicKeyHex ?? '';
-   // if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
-  //  if (accessMode.isEmpty) throw ArgumentError('access mode not set');
-
-  //  KeyManager.validateEDDSAPublicKeyHex(from);
-  //  KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
-
-  //  final uuid7 = newUUID7();
-  //  const int version = 1;
-
-  //  return signAndSendTransaction(
-  //    chainID: _chainID,
-  //    from: from,
-  //    to: tokenAddress,
-  //    method: METHOD_CHANGE_ACCESS_MODE,
-  //    data: {
-  //      "access_mode": accessMode,
-  //    },
-  //    version: version,
-  //    uuid7: uuid7,
-  //  );
-  //}
-
   Future<ContractOutput> revokeFreezeAuthority(String tokenAddress, bool revoke) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
