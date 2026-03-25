@@ -1,39 +1,40 @@
 import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
 
 class Raffle {
-  final String? raffleAddress;
+  final String address;
+  final String owner;
   final String tokenAddress;
-  final String title;
-  final String description;
-  final String imageUrl;
-  final String payTokenAddress;
-  final String startAmount;
-  final int maxTickets;
-  final int maxTicketsPerWallet;
-  final DateTime endTime;
+  final String ticketPrice;
+  final int maxEntries;
+  final int maxEntriesPerUser;
+  final DateTime startAt;
+  final DateTime expiredAt;
   final bool paused;
+  final String seedCommitHex;
+  final String revealSeed;
+  final String hash;
+  final Map<String, String> metadata;
 
   Raffle({
-    this.raffleAddress,
+    required this.address,
+    required this.owner,
     required this.tokenAddress,
-    required this.title,
-    required this.description,
-    required this.imageUrl,
-    required this.payTokenAddress,
-    required this.startAmount,
-    required this.maxTickets,
-    required this.maxTicketsPerWallet,
-    required this.endTime,
+    required this.ticketPrice,
+    required this.maxEntries,
+    required this.maxEntriesPerUser,
+    required this.startAt,
+    required this.expiredAt,
     this.paused = false,
+    this.seedCommitHex = '',
+    this.revealSeed = '',
+    this.hash = '',
+    this.metadata = const <String, String>{},
   }) {
-    _validateAddress(tokenAddress, "token_address");
-    _validateAddress(payTokenAddress, "pay_token_address");
-    if (raffleAddress != null) {
-      _validateAddress(raffleAddress!, "raffle_address");
-    }
+    _validateAddress(address, 'address');
+    _validateAddress(owner, 'owner');
+    _validateAddress(tokenAddress, 'token_address');
   }
 
-  /// Valida se o endereço é uma chave EdDSA válida
   static void _validateAddress(String addr, String label) {
     try {
       KeyManager.validateEDDSAPublicKeyHex(addr.trim());
@@ -42,39 +43,74 @@ class Raffle {
     }
   }
 
+  static int _parseInt(dynamic value, String label) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String && value.isNotEmpty) return int.parse(value);
+
+    throw ArgumentError("Invalid $label '$value'");
+  }
+
+  static DateTime _parseDateTime(dynamic value, String label) {
+    if (value is DateTime) return value;
+    if (value is String && value.isNotEmpty) return DateTime.parse(value);
+
+    throw ArgumentError("Invalid $label '$value'");
+  }
+
+  static Map<String, String> _parseMetadata(dynamic value) {
+    if (value == null) return const <String, String>{};
+
+    if (value is Map) {
+      return value.map(
+        (key, val) => MapEntry(key.toString(), val.toString()),
+      );
+    }
+
+    throw ArgumentError("Invalid metadata '$value'");
+  }
+
   factory Raffle.fromJson(Map<String, dynamic> json) {
     return Raffle(
-      raffleAddress: json['raffle_address'] as String?,
-      tokenAddress: json['token_address'] as String,
-      title: json['title'] as String,
-      description: json['description'] as String,
-      imageUrl: json['image_url'] as String,
-      payTokenAddress: json['pay_token_address'] as String,
-      startAmount: json['start_amount'] as String,
-      maxTickets: json['max_tickets'] as int,
-      maxTicketsPerWallet: json['max_tickets_per_wallet'] as int,
-      endTime: DateTime.parse(json['end_time'] as String),
+      address: (json['address'] ?? '') as String,
+      owner: (json['owner'] ?? '') as String,
+      tokenAddress: (json['token_address'] ?? '') as String,
+      ticketPrice: (json['ticket_price'] ?? '') as String,
+      maxEntries: _parseInt(json['max_entries'], 'max_entries'),
+      maxEntriesPerUser: _parseInt(
+        json['max_entries_per_user'],
+        'max_entries_per_user',
+      ),
+      startAt: _parseDateTime(json['start_at'], 'start_at'),
+      expiredAt: _parseDateTime(json['expired_at'], 'expired_at'),
       paused: json['paused'] as bool? ?? false,
+      seedCommitHex: (json['seed_commit_hex'] ?? '') as String,
+      revealSeed: (json['reveal_seed'] ?? '') as String,
+      hash: (json['hash'] ?? '') as String,
+      metadata: _parseMetadata(json['metadata']),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'raffle_address': raffleAddress,
+      'address': address,
+      'owner': owner,
       'token_address': tokenAddress,
-      'title': title,
-      'description': description,
-      'image_url': imageUrl,
-      'pay_token_address': payTokenAddress,
-      'start_amount': startAmount,
-      'max_tickets': maxTickets,
-      'max_tickets_per_wallet': maxTicketsPerWallet,
-      'end_time': endTime.toIso8601String(),
+      'ticket_price': ticketPrice,
+      'max_entries': maxEntries,
+      'max_entries_per_user': maxEntriesPerUser,
+      'start_at': startAt.toIso8601String(),
+      'expired_at': expiredAt.toIso8601String(),
       'paused': paused,
+      'seed_commit_hex': seedCommitHex,
+      'reveal_seed': revealSeed,
+      'hash': hash,
+      'metadata': metadata,
     };
   }
 
   @override
-  String toString() =>
-      'Raffle(title: $title, token: $tokenAddress, endTime: $endTime, paused: $paused)';
+  String toString() {
+    return 'Raffle(address: $address, owner: $owner, tokenAddress: $tokenAddress, paused: $paused)';
+  }
 }
