@@ -1,253 +1,607 @@
-
 part of two_finance_blockchain;
-extension RaffleClient on TwoFinanceBlockchain{
 
-  // Future<ContractOutput> addRaffle({
-  //   String? raffleAddress,
-  //   required String tokenAddress,
-  //   required String title,
-  //   required String description,
-  //   required String imageUrl,
-  //   required String payTokenAddress,
-  //   required String startAmount,
-  //   required int maxTickets,
-  //   required int maxTicketsPerWallet,
-  //   required DateTime endTime,
-  //   bool paused = false,
-  // }) async {
-  //   final from = _publicKeyHex!;
-  //   final to = tokenAddress;
-  //   final contractVersion = RAFFLE_CONTRACT_V1;
-  //   final method = METHOD_ADD_RAFFLE;
-  //   if (_publicKeyHex!.isEmpty) throw Exception("public key not set");
-  //   if (tokenAddress.isEmpty) throw Exception("token address not set");
-  //   if (payTokenAddress.isEmpty) throw Exception("pay token address not set");
-  //   if (startAmount.isEmpty) throw Exception("start amount not set");
+extension RaffleClient on TwoFinanceBlockchain {
+  static const int _txVersion = 1;
 
-  //    KeyManager.validateEDDSAPublicKeyHex(_publicKeyHex!);
-  //    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
-  //    KeyManager.validateEDDSAPublicKeyHex(payTokenAddress);
+  void _validatePublicKeyHex(String value, String label) {
+    try {
+      KeyManager.validateEDDSAPublicKeyHex(value);
+    } catch (e) {
+      throw ArgumentError('invalid $label: $e');
+    }
+  }
 
-  //   final data = {
-  //     "raffle_address": raffleAddress,
-  //     "token_address": tokenAddress,
-  //     "title": title,
-  //     "description": description,
-  //     "image_url": imageUrl,
-  //     "pay_token_address": payTokenAddress,
-  //     "start_amount": startAmount,
-  //     "max_tickets": maxTickets,
-  //     "max_tickets_per_wallet": maxTicketsPerWallet,
-  //     "end_time": endTime.toIso8601String(),
-  //     "paused": paused,
-  //   };
+  String _requireFromAddress() {
+    final from = publicKeyHex ?? '';
+    if (from.isEmpty) {
+      throw ArgumentError('from address not set');
+    }
 
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-  // }
+    _validatePublicKeyHex(from, 'from address');
+    return from;
+  }
 
-  // Future<ContractOutput> updateRaffle({
-  //   required String raffleAddress,
-  //   String? title,
-  //   String? description,
-  //   String? imageUrl,
-  //   int? maxTickets,
-  //   int? maxTicketsPerWallet,
-  //   DateTime? endTime,
-  // }) async {
-  //   final from = _publicKeyHex!;
-  //   final to = raffleAddress;
-  //   final contractVersion = RAFFLE_CONTRACT_V1;
-  //   final method = METHOD_UPDATE_RAFFLE;
-  //   if (to.isEmpty) throw Exception("public key not set");
-  //   if (raffleAddress.isEmpty) throw Exception("raffle address not set");
+  String _newUuid7OrThrow() {
+    try {
+      return newUUID7();
+    } catch (e) {
+      throw StateError('failed to generate UUIDv7: $e');
+    }
+  }
 
-  //    KeyManager.validateEDDSAPublicKeyHex(_publicKeyHex!);
-  //    KeyManager.validateEDDSAPublicKeyHex(raffleAddress);
+  bool _isZeroLikeDateTime(DateTime value) {
+    final isUnixEpoch = value.millisecondsSinceEpoch == 0;
+    final isGoZeroLike =
+        value.year <= 1 &&
+        value.month == 1 &&
+        value.day == 1 &&
+        value.hour == 0 &&
+        value.minute == 0 &&
+        value.second == 0 &&
+        value.millisecond == 0 &&
+        value.microsecond == 0;
 
-  //   final data = {
-  //     "raffle_address": raffleAddress,
-  //     if (title != null) "title": title,
-  //     if (description != null) "description": description,
-  //     if (imageUrl != null) "image_url": imageUrl,
-  //     if (maxTickets != null) "max_tickets": maxTickets,
-  //     if (maxTicketsPerWallet != null) "max_tickets_per_wallet": maxTicketsPerWallet,
-  //     if (endTime != null) "end_time": endTime.toIso8601String(),
-  //   };
+    return isUnixEpoch || isGoZeroLike;
+  }
 
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-  // }
+  Future<ContractOutput> addRaffle({
+    required String address,
+    required String owner,
+    required String tokenAddress,
+    required String ticketPrice,
+    required int maxEntries,
+    required int maxEntriesPerUser,
+    required DateTime startAt,
+    required DateTime expiredAt,
+    bool paused = false,
+    String seedCommitHex = '',
+    Map<String, String> metadata = const <String, String>{},
+  }) async {
+    final from = _requireFromAddress();
 
-  // Future<ContractOutput> pauseRaffle(String raffleAddress) async {
-  //   final from = _publicKeyHex!;
-  //   final to = raffleAddress;
-  //   final contractVersion = RAFFLE_CONTRACT_V1;
-  //   final method = METHOD_PAUSE_RAFFLE;
-  //   if (raffleAddress.isEmpty) throw Exception("raffle address not set");
-  //    KeyManager.validateEDDSAPublicKeyHex(raffleAddress);
+    if (address.isEmpty) {
+      throw ArgumentError('address not set');
+    }
+    _validatePublicKeyHex(address, 'raffle address');
 
-  //   final data = {"raffle_address": raffleAddress, "paused": true};
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-  // }
+    if (owner.isEmpty) {
+      throw ArgumentError('owner not set');
+    }
+    _validatePublicKeyHex(owner, 'owner address');
 
-  // Future<ContractOutput> unpauseRaffle(String raffleAddress) async {
-  //   final from = _publicKeyHex!;
-  //   final to = raffleAddress;
-  //   final contractVersion = RAFFLE_CONTRACT_V1;
-  //   final method = METHOD_UNPAUSE_RAFFLE;
-  //   if (raffleAddress.isEmpty) throw Exception("raffle address not set");
-  //    KeyManager.validateEDDSAPublicKeyHex(raffleAddress);
+    if (tokenAddress.isEmpty) {
+      throw ArgumentError('token address not set');
+    }
+    _validatePublicKeyHex(tokenAddress, 'token address');
 
-  //   final data = {"raffle_address": raffleAddress, "paused": false};
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-  // }
+    if (ticketPrice.isEmpty) {
+      throw ArgumentError('ticket_price not set');
+    }
+    if (maxEntries <= 0) {
+      throw ArgumentError('max_entries must be > 0');
+    }
+    if (maxEntriesPerUser <= 0) {
+      throw ArgumentError('max_entries_per_user must be > 0');
+    }
+    if (maxEntriesPerUser > maxEntries) {
+      throw ArgumentError('max_entries_per_user cannot exceed max_entries');
+    }
+    if (_isZeroLikeDateTime(startAt)) {
+      throw ArgumentError('start_at not set');
+    }
+    if (_isZeroLikeDateTime(expiredAt)) {
+      throw ArgumentError('expired_at not set');
+    }
 
-  // Future<ContractOutput> enterRaffle({
-  //   required String raffleAddress,
-  //   required String payTokenAddress,
-  //   required int tickets,
-  // }) async {
-  //   final from = _publicKeyHex!;
-  //   final to = raffleAddress;
-  //   final contractVersion = RAFFLE_CONTRACT_V1;
-  //   final method = METHOD_ENTER_RAFFLE;
-  //   if (raffleAddress.isEmpty) throw Exception("raffle address not set");
-  //   if (tickets <= 0) throw Exception("tickets must be greater than 0");
-  //   if (payTokenAddress.isEmpty) throw Exception("pay token address not set");
+    final JsonMessage data = {
+      'address': address,
+      'owner': owner,
+      'token_address': tokenAddress,
+      'ticket_price': ticketPrice,
+      'max_entries': maxEntries,
+      'max_entries_per_user': maxEntriesPerUser,
+      'start_at': startAt.toIso8601String(),
+      'expired_at': expiredAt.toIso8601String(),
+      'paused': paused,
+      'seed_commit_hex': seedCommitHex,
+      'metadata': metadata,
+    };
 
-  //    KeyManager.validateEDDSAPublicKeyHex(raffleAddress);
-  //    KeyManager.validateEDDSAPublicKeyHex(payTokenAddress);
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_ADD_RAFFLE,
+      data: data,
+      version: _txVersion,
+      uuid7: _newUuid7OrThrow(),
+    );
+  }
 
-  //   final data = {
-  //     "raffle_address": raffleAddress,
-  //     "pay_token_address": payTokenAddress,
-  //     "tickets": tickets,
-  //   };
+  Future<ContractOutput> updateRaffle({
+    required String address,
+    String tokenAddress = '',
+    String ticketPrice = '',
+    int maxEntries = 0,
+    int maxEntriesPerUser = 0,
+    DateTime? startAt,
+    DateTime? expiredAt,
+    String seedCommitHex = '',
+    Map<String, String> metadata = const <String, String>{},
+  }) async {
+    if (address.isEmpty) {
+      throw ArgumentError('address not set');
+    }
+    _validatePublicKeyHex(address, 'address');
 
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-  // }
+    final from = _requireFromAddress();
 
-  // Future<ContractOutput> claimRaffle(String raffleAddress) async {
-  //   final from = _publicKeyHex!;
-  //   final to = raffleAddress;
-  //   final contractVersion = RAFFLE_CONTRACT_V1;
-  //   final method = METHOD_CLAIM_RAFFLE;
-  //   if (raffleAddress.isEmpty) throw Exception("raffle address not set");
-  //    KeyManager.validateEDDSAPublicKeyHex(raffleAddress);
+    if (tokenAddress.isNotEmpty) {
+      _validatePublicKeyHex(tokenAddress, 'token address');
+    }
 
-  //   final data = {"raffle_address": raffleAddress};
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-  // }
+    if (ticketPrice.isEmpty &&
+        maxEntries == 0 &&
+        maxEntriesPerUser == 0 &&
+        startAt == null &&
+        expiredAt == null &&
+        seedCommitHex.isEmpty &&
+        metadata.isEmpty) {
+      throw ArgumentError('no fields to update');
+    }
 
-  // Future<ContractOutput> withdrawRaffle(String raffleAddress) async {
-  //   final from = _publicKeyHex!;
-  //   final to = raffleAddress;
-  //   final contractVersion = RAFFLE_CONTRACT_V1;
-  //   final method = METHOD_WITHDRAW_RAFFLE;
-  //   if (raffleAddress.isEmpty) throw Exception("raffle address not set");
-  //    KeyManager.validateEDDSAPublicKeyHex(raffleAddress);
+    if (maxEntries < 0 || maxEntriesPerUser < 0) {
+      throw ArgumentError('max entries must be >= 0');
+    }
 
-  //   final data = {"raffle_address": raffleAddress};
-  //   return signAndSendTransaction(from: from, to: to, contractVersion: contractVersion, method: method, data:data);
-  // }
+    if (maxEntries > 0 && maxEntriesPerUser > maxEntries) {
+      throw ArgumentError('max_entries_per_user cannot exceed max_entries');
+    }
 
-  // Future<ContractOutput> addRafflePrize({
-  //   required String raffleAddress,
-  //   required String tokenAddress,
-  //   required String amount,
-  // }) async {
-  //   final from = _publicKeyHex!;
-  //   final to = raffleAddress;
-  //   final contractVersion = RAFFLE_CONTRACT_V1;
-  //   final method = METHOD_ADD_RAFFLE_PRIZE;
-  //   if (raffleAddress.isEmpty) throw Exception("raffle address not set");
-  //   if (tokenAddress.isEmpty) throw Exception("token address not set");
-  //   if (amount.isEmpty) throw Exception("amount not set");
+    final JsonMessage data = {
+      'address': address,
+      'token_address': tokenAddress,
+      'ticket_price': ticketPrice,
+      'max_entries': maxEntries,
+      'max_entries_per_user': maxEntriesPerUser,
+      'seed_commit_hex': seedCommitHex,
+      'metadata': metadata,
+    };
 
-  //    KeyManager.validateEDDSAPublicKeyHex(raffleAddress);
-  //    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    if (startAt != null) {
+      data['start_at'] = startAt.toIso8601String();
+    }
 
-  //   final data = {
-  //     "raffle_address": raffleAddress,
-  //     "token_address": tokenAddress,
-  //     "amount": amount,
-  //   };
+    if (expiredAt != null) {
+      data['expired_at'] = expiredAt.toIso8601String();
+    }
 
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-  // }
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_UPDATE_RAFFLE,
+      data: data,
+      version: _txVersion,
+      uuid7: _newUuid7OrThrow(),
+    );
+  }
 
-  // Future<ContractOutput> removeRafflePrize({
-  //   required String raffleAddress,
-  //   required String tokenAddress,
-  // }) async {
-  //   final from = _publicKeyHex!;
-  //   final to = raffleAddress;
-  //   final contractVersion = RAFFLE_CONTRACT_V1;
-  //   final method = METHOD_REMOVE_RAFFLE_PRIZE;
-  //   if (raffleAddress.isEmpty) throw Exception("raffle address not set");
-  //   if (tokenAddress.isEmpty) throw Exception("token address not set");
+  Future<ContractOutput> pauseRaffle(String address, bool paused) async {
+    if (address.isEmpty) {
+      throw ArgumentError('address not set');
+    }
+    _validatePublicKeyHex(address, 'address');
 
-  //    KeyManager.validateEDDSAPublicKeyHex(raffleAddress);
-  //    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    if (!paused) {
+      throw ArgumentError('paused must be true: Pause: $paused');
+    }
 
-  //   final data = {
-  //     "raffle_address": raffleAddress,
-  //     "token_address": tokenAddress,
-  //   };
+    final from = _requireFromAddress();
 
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-    
-  // }
+    final JsonMessage data = {
+      'address': address,
+      'paused': paused,
+    };
 
-  // Future<ContractOutput> drawRaffle(String raffleAddress, String seed) async {
-  //   final from = _publicKeyHex!;
-  //   final to = raffleAddress;
-  //   final method = METHOD_DRAW_RAFFLE;
-  //   final contractVersion = RAFFLE_CONTRACT_V1;
-  //   if (raffleAddress.isEmpty) throw Exception("raffle address not set");
-  //   if (seed.isEmpty) throw Exception("seed not set");
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_PAUSE_RAFFLE,
+      data: data,
+      version: _txVersion,
+      uuid7: _newUuid7OrThrow(),
+    );
+  }
 
-  //    KeyManager.validateEDDSAPublicKeyHex(raffleAddress);
+  Future<ContractOutput> unpauseRaffle(String address, bool paused) async {
+    if (address.isEmpty) {
+      throw ArgumentError('address not set');
+    }
+    _validatePublicKeyHex(address, 'address');
 
-  //   final data = {"raffle_address": raffleAddress, "seed": seed};
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-    
-  // }
+    if (paused) {
+      throw ArgumentError('paused must be false: Pause: $paused');
+    }
 
-  // Future<ContractOutput> getRaffle(String raffleAddress) async {
-  //   if (raffleAddress.isEmpty) throw Exception("raffle address not set");
-  //    KeyManager.validateEDDSAPublicKeyHex(raffleAddress);
+    final from = _requireFromAddress();
 
-  //   final data = {"raffle_address": raffleAddress};
-  //   return getState(contractVersion: RAFFLE_CONTRACT_V1, method: METHOD_GET_RAFFLE, data: data);
-    
-  // }
+    final JsonMessage data = {
+      'address': address,
+      'paused': paused,
+    };
 
-  // Future<ContractOutput> listRaffles({
-  //   String? owner,
-  //   String? tokenAddress,
-  //   bool? paused,
-  //   bool activeOnly = false,
-  //   int page = 1,
-  //   int limit = 10,
-  //   bool ascending = false,
-  // }) async {
-  //    KeyManager.validateEDDSAPublicKeyHex(_publicKeyHex!);
-  //   if (owner != null && owner.isNotEmpty)  KeyManager.validateEDDSAPublicKeyHex(owner);
-  //   if (tokenAddress != null && tokenAddress.isNotEmpty)  KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_UNPAUSE_RAFFLE,
+      data: data,
+      version: _txVersion,
+      uuid7: _newUuid7OrThrow(),
+    );
+  }
 
-  //   final data = {
-  //     "owner": owner ?? "",
-  //     "token_address": tokenAddress ?? "",
-  //     "paused": paused,
-  //     "active_only": activeOnly,
-  //     "page": page,
-  //     "limit": limit,
-  //     "ascending": ascending,
-  //   };
+  Future<ContractOutput> enterRaffle({
+    required String address,
+    required int tickets,
+    required String payTokenAddress,
+    required String tokenType,
+    required String uuid,
+  }) async {
+    final from = _requireFromAddress();
 
-  //   return getState(contractVersion: RAFFLE_CONTRACT_V1, method: METHOD_LIST_RAFFLES, data: data);
-    
-  // }
+    if (address.isEmpty) {
+      throw ArgumentError('address is required');
+    }
+    _validatePublicKeyHex(address, 'raffle address');
 
-  
+    if (tickets <= 0) {
+      throw ArgumentError('tickets must be > 0');
+    }
+
+    if (payTokenAddress.isEmpty) {
+      throw ArgumentError('pay_token_address is required');
+    }
+    _validatePublicKeyHex(payTokenAddress, 'pay_token_address');
+
+    if (tokenType.isEmpty) {
+      throw ArgumentError('tokenType not set');
+    }
+
+    if (tokenType == TOKEN_TYPE_NON_FUNGIBLE && uuid.isEmpty) {
+      throw ArgumentError('uuid must be set for non-fungible tokens');
+    }
+
+    final JsonMessage data = {
+      'address': address,
+      'entrant': from,
+      'tickets': tickets,
+      'pay_token_address': payTokenAddress,
+      'token_type': tokenType,
+      'uuid': uuid,
+    };
+
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_ENTER_RAFFLE,
+      data: data,
+      version: _txVersion,
+      uuid7: _newUuid7OrThrow(),
+    );
+  }
+
+  Future<ContractOutput> drawRaffle(String address, String revealSeed) async {
+    if (address.isEmpty) {
+      throw ArgumentError('address not set');
+    }
+    _validatePublicKeyHex(address, 'address');
+
+    if (revealSeed.isEmpty) {
+      throw ArgumentError('reveal_seed not set');
+    }
+
+    final from = _requireFromAddress();
+
+    final JsonMessage data = {
+      'address': address,
+      'reveal_seed': revealSeed,
+    };
+
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_DRAW_RAFFLE,
+      data: data,
+      version: _txVersion,
+      uuid7: _newUuid7OrThrow(),
+    );
+  }
+
+  Future<ContractOutput> claimRaffle({
+    required String address,
+    required String winner,
+    required String tokenType,
+    required String uuid,
+  }) async {
+    if (address.isEmpty) {
+      throw ArgumentError('address not set');
+    }
+    _validatePublicKeyHex(address, 'address');
+
+    if (winner.isEmpty) {
+      throw ArgumentError('winner not set');
+    }
+    _validatePublicKeyHex(winner, 'winner address');
+
+    if (tokenType.isEmpty) {
+      throw ArgumentError('tokenType not set');
+    }
+
+    if (tokenType == TOKEN_TYPE_NON_FUNGIBLE && uuid.isEmpty) {
+      throw ArgumentError('uuid must be set for non-fungible tokens');
+    }
+
+    final from = _requireFromAddress();
+
+    final JsonMessage data = {
+      'address': address,
+      'winner': winner,
+      'token_type': tokenType,
+      'uuid': uuid,
+    };
+
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_CLAIM_RAFFLE,
+      data: data,
+      version: _txVersion,
+      uuid7: _newUuid7OrThrow(),
+    );
+  }
+
+  Future<ContractOutput> withdrawRaffle({
+    required String address,
+    required String tokenAddress,
+    required String amount,
+    required String tokenType,
+    required String uuid,
+  }) async {
+    if (address.isEmpty) {
+      throw ArgumentError('address not set');
+    }
+    _validatePublicKeyHex(address, 'address');
+
+    if (tokenAddress.isEmpty) {
+      throw ArgumentError('token address not set');
+    }
+    _validatePublicKeyHex(tokenAddress, 'token address');
+
+    if (amount.isEmpty) {
+      throw ArgumentError('amount not set');
+    }
+
+    if (tokenType.isEmpty) {
+      throw ArgumentError('tokenType not set');
+    }
+
+    if (tokenType == TOKEN_TYPE_NON_FUNGIBLE && uuid.isEmpty) {
+      throw ArgumentError('uuid must be set for non-fungible tokens');
+    }
+
+    final from = _requireFromAddress();
+
+    final JsonMessage data = {
+      'address': address,
+      'token_address': tokenAddress,
+      'amount': amount,
+      'token_type': tokenType,
+      'uuid': uuid,
+    };
+
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_WITHDRAW_RAFFLE,
+      data: data,
+      version: _txVersion,
+      uuid7: _newUuid7OrThrow(),
+    );
+  }
+
+  Future<ContractOutput> addRafflePrize({
+    required String raffleAddress,
+    required String tokenAddress,
+    required String amount,
+    required String tokenType,
+    required String uuid,
+  }) async {
+    if (raffleAddress.isEmpty) {
+      throw ArgumentError('raffle address not set');
+    }
+    _validatePublicKeyHex(raffleAddress, 'raffle address');
+
+    if (tokenAddress.isEmpty) {
+      throw ArgumentError('token address not set');
+    }
+    _validatePublicKeyHex(tokenAddress, 'token address');
+
+    if (amount.isEmpty) {
+      throw ArgumentError('amount not set');
+    }
+
+    if (tokenType.isEmpty) {
+      throw ArgumentError('tokenType not set');
+    }
+
+    if (tokenType == TOKEN_TYPE_NON_FUNGIBLE && uuid.isEmpty) {
+      throw ArgumentError('uuid must be set for non-fungible tokens');
+    }
+
+    final from = _requireFromAddress();
+
+    final JsonMessage data = {
+      'amount': amount,
+      'raffle_address': raffleAddress,
+      'token_address': tokenAddress,
+      'token_type': tokenType,
+      'uuid': uuid,
+    };
+
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: raffleAddress,
+      method: METHOD_ADD_RAFFLE_PRIZE,
+      data: data,
+      version: _txVersion,
+      uuid7: _newUuid7OrThrow(),
+    );
+  }
+
+  Future<ContractOutput> removeRafflePrize({
+    required String raffleAddress,
+    required String tokenType,
+    required String uuid,
+  }) async {
+    if (raffleAddress.isEmpty) {
+      throw ArgumentError('raffle address not set');
+    }
+    _validatePublicKeyHex(raffleAddress, 'raffle address');
+
+    if (tokenType.isEmpty) {
+      throw ArgumentError('tokenType not set');
+    }
+
+    if (uuid.isEmpty) {
+      throw ArgumentError('uuid not set');
+    }
+
+    final from = _requireFromAddress();
+
+    final JsonMessage data = {
+      'raffle_address': raffleAddress,
+      'uuid': uuid,
+      'token_type': tokenType,
+    };
+
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: raffleAddress,
+      method: METHOD_REMOVE_RAFFLE_PRIZE,
+      data: data,
+      version: _txVersion,
+      uuid7: _newUuid7OrThrow(),
+    );
+  }
+
+  Future<ContractOutput> getRaffle(String address) async {
+    _requireFromAddress();
+
+    if (address.isEmpty) {
+      throw ArgumentError('raffle address must be set');
+    }
+    _validatePublicKeyHex(address, 'raffle address');
+
+    return getState(
+      to: address,
+      method: METHOD_GET_RAFFLE,
+      data: const <String, dynamic>{},
+    );
+  }
+
+  Future<ContractOutput> listRaffles({
+    String owner = '',
+    String tokenAddress = '',
+    bool? paused,
+    bool? activeOnly,
+    int page = 1,
+    int limit = 10,
+    bool ascending = false,
+  }) async {
+    _requireFromAddress();
+
+    if (owner.isNotEmpty) {
+      _validatePublicKeyHex(owner, 'owner address');
+    }
+
+    if (tokenAddress.isNotEmpty) {
+      _validatePublicKeyHex(tokenAddress, 'token address');
+    }
+
+    if (page < 1) {
+      throw ArgumentError('page must be greater than 0');
+    }
+
+    if (limit < 1) {
+      throw ArgumentError('limit must be greater than 0');
+    }
+
+    final JsonMessage data = {
+      'owner': owner,
+      'page': page,
+      'limit': limit,
+      'ascending': ascending,
+      'token_address': tokenAddress,
+      'contract_version': RAFFLE_CONTRACT_V1,
+    };
+
+    if (paused != null) {
+      data['paused'] = paused;
+    }
+
+    if (activeOnly != null) {
+      data['active_only'] = activeOnly;
+    }
+
+    return getState(
+      to: '',
+      method: METHOD_LIST_RAFFLES,
+      data: data,
+    );
+  }
+
+  Future<ContractOutput> listPrizes({
+    required String raffleAddress,
+    int page = 1,
+    int limit = 10,
+    bool ascending = false,
+  }) async {
+    _requireFromAddress();
+
+    if (raffleAddress.isEmpty) {
+      throw ArgumentError('raffle address must be set');
+    }
+    _validatePublicKeyHex(raffleAddress, 'raffle address');
+
+    if (page < 1) {
+      throw ArgumentError('page must be greater than 0');
+    }
+
+    if (limit < 1) {
+      throw ArgumentError('limit must be greater than 0');
+    }
+
+    final JsonMessage data = {
+      'raffle_address': raffleAddress,
+      'page': page,
+      'limit': limit,
+      'ascending': ascending,
+      'contract_version': RAFFLE_CONTRACT_V1,
+    };
+
+    return getState(
+      to: '',
+      method: METHOD_LIST_PRIZES,
+      data: data,
+    );
+  }
 }
