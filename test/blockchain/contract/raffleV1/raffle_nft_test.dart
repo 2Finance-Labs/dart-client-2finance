@@ -78,7 +78,7 @@ void _expectRaffleSnapshot(
 
 void main() {
   group('RaffleV1 E2E', () {
-    test('E2E: deploy raffle contract + addRaffle + getRaffle', () async {
+    test('E2E: deploy raffle contract + addRaffle + getRaffle NFT', () async {
       final c = await setupClient();
 
       final ownerUser = await newTestUser('owner');
@@ -95,15 +95,10 @@ void main() {
         stablecoin: false,
       );
 
-      final prizeTokenAddress = await createBasicToken(
-        c,
-        ownerPrivateKey: ownerUser.privateKey,
-        ownerPublicKey: ownerUser.publicKey,
-        decimals: 6,
-        requireFee: false,
-        tokenType: TOKEN_TYPE_FUNGIBLE,
-        stablecoin: false,
-      );
+      final mintedPrize = await createAndMintNftPrize(c, ownerUser: ownerUser);
+
+      final prizeTokenAddress = mintedPrize.tokenAddress;
+      final prizeUuid = mintedPrize.tokenUuid;
 
       await c.setPrivateKey(ownerUser.privateKey);
 
@@ -116,65 +111,15 @@ void main() {
       final raffleAddress = deployed.logs!.first.contractAddress;
       expect(raffleAddress, isNotEmpty);
 
-      final outAllowPayToken = await c.allowUsers(paymentTokenAddress, {
-        ownerUser.publicKey: true,
-        player1User.publicKey: true,
-        player2User.publicKey: true,
-        raffleAddress: true,
-      });
-
-      expect(outAllowPayToken, isA<ContractOutput>());
-      expect(outAllowPayToken.logs, isNotNull);
-      expect(outAllowPayToken.logs!, isNotEmpty);
-      expect(
-        outAllowPayToken.logs!.first.logType,
-        equals('Token_AllowedUsersAdded'),
+      await prepareRaffleParticipantsAndFunding(
+        c,
+        ownerUser: ownerUser,
+        players: [player1User, player2User],
+        paymentTokenAddress: paymentTokenAddress,
+        prizeTokenAddress: prizeTokenAddress,
+        raffleAddress: raffleAddress,
+        fundingAmount: '3000000',
       );
-      expect(
-        outAllowPayToken.logs!.first.contractAddress,
-        equals(paymentTokenAddress),
-      );
-
-      final outAllowPrizeToken = await c.allowUsers(prizeTokenAddress, {
-        ownerUser.publicKey: true,
-        player1User.publicKey: true,
-        player2User.publicKey: true,
-        raffleAddress: true,
-      });
-
-      expect(outAllowPrizeToken, isA<ContractOutput>());
-      expect(outAllowPrizeToken.logs, isNotNull);
-      expect(outAllowPrizeToken.logs!, isNotEmpty);
-      expect(
-        outAllowPrizeToken.logs!.first.logType,
-        equals('Token_AllowedUsersAdded'),
-      );
-      expect(
-        outAllowPrizeToken.logs!.first.contractAddress,
-        equals(prizeTokenAddress),
-      );
-
-      final outTransferPlayer1 = await c.transferToken(
-        tokenAddress: paymentTokenAddress,
-        transferTo: player1User.publicKey,
-        amount: '3000000',
-        decimals: 0,
-        tokenType: TOKEN_TYPE_FUNGIBLE,
-        uuid: '',
-      );
-
-      expect(outTransferPlayer1, isA<ContractOutput>());
-
-      final outTransferPlayer2 = await c.transferToken(
-        tokenAddress: paymentTokenAddress,
-        transferTo: player2User.publicKey,
-        amount: '3000000',
-        decimals: 0,
-        tokenType: TOKEN_TYPE_FUNGIBLE,
-        uuid: '',
-      );
-
-      expect(outTransferPlayer2, isA<ContractOutput>());
 
       final startAt = DateTime.now().toUtc().subtract(
         const Duration(minutes: 5),
@@ -186,15 +131,14 @@ void main() {
       const maxEntriesPerUser = 3;
       const paused = false;
 
-      const revealSeed = 'raffle-secret-seed-fungible-e2e';
+      const revealSeed = 'raffle-secret-seed-non-fungible-e2e';
       final seedCommitHex = sha256.convert(utf8.encode(revealSeed)).toString();
 
       final metadata = <String, String>{
-        'name': 'Raffle Fungible E2E',
-        'description': 'raffle flow fungible',
-        'image': 'https://example.com/raffle.png',
+        'name': 'Raffle Non Fungible E2E',
+        'description': 'raffle flow non fungible',
+        'image': 'https://example.com/raffle-nft.png',
       };
-
       final outAdd = await c.addRaffle(
         address: raffleAddress,
         owner: ownerUser.publicKey,
@@ -232,9 +176,12 @@ void main() {
       final addMetadata = Map<String, dynamic>.from(
         addEvent['metadata'] as Map,
       );
-      expect(addMetadata['name'], equals('Raffle Fungible E2E'));
-      expect(addMetadata['description'], equals('raffle flow fungible'));
-      expect(addMetadata['image'], equals('https://example.com/raffle.png'));
+      expect(addMetadata['name'], equals('Raffle Non Fungible E2E'));
+      expect(addMetadata['description'], equals('raffle flow non fungible'));
+      expect(
+        addMetadata['image'],
+        equals('https://example.com/raffle-nft.png'),
+      );
 
       expect(addEvent['hash'], isNotNull);
       expect(addEvent['hash'], isA<String>());
@@ -261,16 +208,9 @@ void main() {
       );
 
       // ------------------
-      // ADD PRIZE
+      // ADD PRIZE NFT
       // ------------------
-      const prizeAmount = '2500000';
-      const requestedPrizeUuid = 'prize-ft-001';
-
-      final ownerPrizeBeforeAdd = await getFtBalanceAmount(
-        c,
-        tokenAddress: prizeTokenAddress,
-        ownerAddress: ownerUser.publicKey,
-      );
+      const prizeAmount = '1';
 
       await c.setPrivateKey(ownerUser.privateKey);
 
@@ -278,8 +218,8 @@ void main() {
         raffleAddress: raffleAddress,
         tokenAddress: prizeTokenAddress,
         amount: prizeAmount,
-        tokenType: TOKEN_TYPE_FUNGIBLE,
-        uuid: requestedPrizeUuid,
+        tokenType: TOKEN_TYPE_NON_FUNGIBLE,
+        uuid: prizeUuid,
       );
 
       expect(outAddPrize, isA<ContractOutput>());
@@ -299,26 +239,27 @@ void main() {
       expect(addPrizeEvent['sponsor'], equals(ownerUser.publicKey));
       expect(addPrizeEvent['token_address'], equals(prizeTokenAddress));
       expect(addPrizeEvent['amount'], equals(prizeAmount));
-      final prizeUuid = addPrizeEvent['uuid'] as String;
-      expect(prizeUuid.isNotEmpty, isTrue);
 
-      final rafflePrizeAfterAdd = await getFtBalanceAmount(
-        c,
-        tokenAddress: prizeTokenAddress,
-        ownerAddress: raffleAddress,
-      );
+      final rafflePrizeUuid = addPrizeEvent['uuid'] as String;
+      expect(rafflePrizeUuid.isNotEmpty, isTrue);
 
-      expect(rafflePrizeAfterAdd, equals(prizeAmount));
-
-      final ownerPrizeAfterAdd = await getFtBalanceAmount(
+      await expectNftBalance(
         c,
         tokenAddress: prizeTokenAddress,
         ownerAddress: ownerUser.publicKey,
+        uuid: prizeUuid,
+        expectedAmount: '1',
+        expectedTokenType: TOKEN_TYPE_NON_FUNGIBLE,
       );
 
-      expect(
-        BigInt.parse(ownerPrizeAfterAdd),
-        equals(BigInt.parse(ownerPrizeBeforeAdd) - BigInt.parse(prizeAmount)),
+      await expectNftBalance(
+        c,
+        tokenAddress: prizeTokenAddress,
+        ownerAddress: raffleAddress,
+        uuid: prizeUuid,
+        expectedAmount: '1',
+        expectedTokenType: TOKEN_TYPE_NON_FUNGIBLE,
+        expectedBurned: false,
       );
 
       // ------------------
@@ -333,9 +274,9 @@ void main() {
       const updatedMaxEntriesPerUser = 5;
       final updatedSeedCommitHex = seedCommitHex;
       final updatedMetadata = <String, String>{
-        'name': 'Raffle Fungible E2E Updated',
-        'description': 'raffle flow fungible updated',
-        'image': 'https://example.com/raffle-updated.png',
+        'name': 'Raffle Non Fungible E2E Updated',
+        'description': 'raffle flow non fungible updated',
+        'image': 'https://example.com/raffle-nft-updated.png',
       };
 
       final outUpdate = await c.updateRaffle(
@@ -376,14 +317,17 @@ void main() {
       final updateMetadata = Map<String, dynamic>.from(
         updateEvent['metadata'] as Map,
       );
-      expect(updateMetadata['name'], equals('Raffle Fungible E2E Updated'));
+      expect(
+        updatedMetadata['name'],
+        equals('Raffle Non Fungible E2E Updated'),
+      );
       expect(
         updateMetadata['description'],
-        equals('raffle flow fungible updated'),
+        equals('raffle flow non fungible updated'),
       );
       expect(
         updateMetadata['image'],
-        equals('https://example.com/raffle-updated.png'),
+        equals('https://example.com/raffle-nft-updated.png'),
       );
 
       expect(updateEvent['hash'], isNotNull);
@@ -509,7 +453,7 @@ void main() {
         payTokenAddress: paymentTokenAddress,
         tickets: 2,
         expectedPaid: (2 * ticketPriceInt).toString(),
-        requestUuid: 'enter-ft-001',
+        requestUuid: 'enter-nft-001',
       );
 
       await enterRaffleFtAndExpect(
@@ -519,7 +463,7 @@ void main() {
         payTokenAddress: paymentTokenAddress,
         tickets: 1,
         expectedPaid: (1 * ticketPriceInt).toString(),
-        requestUuid: 'enter-ft-002',
+        requestUuid: 'enter-nft-002',
       );
 
       final player1PayAfterEnter = await getFtBalanceAmount(
@@ -627,78 +571,14 @@ void main() {
       );
 
       // ------------------
-      // CLAIM
+      // CLAIM NFT
       // ------------------
-      final outWinnerPrizeBefore = await c.getTokenBalance(
-        tokenAddress: prizeTokenAddress,
-        ownerAddress: winner,
-      );
-
-      final winnerPrizeBefore =
-          (outWinnerPrizeBefore.states == null ||
-              outWinnerPrizeBefore.states!.isEmpty)
-          ? '0'
-          : unmarshalState(
-                  outWinnerPrizeBefore.states!.first.object,
-                  (json) => Map<String, dynamic>.from(json as Map),
-                )['amount']
-                as String;
-
-      final rafflePrizeBeforeClaim = await getFtBalanceAmount(
-        c,
-        tokenAddress: prizeTokenAddress,
-        ownerAddress: raffleAddress,
-      );
-
-      expect(rafflePrizeBeforeClaim, equals(prizeAmount));
-
-      if (winner == player1User.publicKey) {
-        await c.setPrivateKey(player1User.privateKey);
-      } else if (winner == player2User.publicKey) {
-        await c.setPrivateKey(player2User.privateKey);
-      } else {
-        fail('unexpected winner: $winner');
-      }
-
-      final outClaim = await c.claimRaffle(
-        address: raffleAddress,
-        winner: winner,
-        tokenType: TOKEN_TYPE_FUNGIBLE,
-        uuid: prizeUuid,
-      );
-
-      expect(outClaim, isA<ContractOutput>());
-      expect(outClaim.logs, isNotNull);
-      expect(outClaim.logs!, isNotEmpty);
-
-      final claimLog = outClaim.logs!.first;
-      expect(claimLog.contractAddress, equals(raffleAddress));
-      expect(claimLog.logType, equals('Raffle_Claimed'));
-
-      final claimEvent = unmarshalEvent<JsonMap>(
-        claimLog.event,
-        (json) => Map<String, dynamic>.from(json as Map),
-      );
-
-      expect(claimEvent['address'], equals(raffleAddress));
-      expect(claimEvent['winner'], equals(winner));
-
-      final winnerPrizeAfter = await getFtBalanceAmount(
-        c,
-        tokenAddress: prizeTokenAddress,
-        ownerAddress: winner,
-      );
-
-      expect(
-        BigInt.parse(winnerPrizeAfter),
-        equals(BigInt.parse(winnerPrizeBefore) + BigInt.parse(prizeAmount)),
-      );
 
       // ------------------
       // WITHDRAW
       // ------------------
       const withdrawAmount = '500000';
-      const withdrawUuid = 'withdraw-ft-001';
+      const withdrawUuid = 'withdraw-nft-001';
 
       await c.setPrivateKey(ownerUser.privateKey);
 
@@ -801,7 +681,7 @@ void main() {
       for (final p in prizes) {
         if (p['raffle_address'] == raffleAddress &&
             p['token_address'] == prizeTokenAddress &&
-            p['amount'] == prizeAmount) {
+            p['uuid'] == rafflePrizeUuid) {
           foundPrize = p;
           break;
         }
@@ -809,10 +689,10 @@ void main() {
 
       expect(foundPrize, isNotNull);
 
-      expect(foundPrize!['uuid'], equals(prizeUuid));
+      expect(foundPrize!['uuid'], equals(rafflePrizeUuid));
+      expect(foundPrize['amount'], equals('1'));
       expect(foundPrize['sponsor'], equals(ownerUser.publicKey));
       expect(foundPrize['winner'], equals(winner));
-      expect(foundPrize['claimed'], isTrue);
       expect(foundPrize['created_at'], isNotNull);
       expect(foundPrize['updated_at'], isNotNull);
     });

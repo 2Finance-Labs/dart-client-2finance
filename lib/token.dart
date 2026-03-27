@@ -718,6 +718,31 @@ extension Token on TwoFinanceBlockchain {
     return getState(to: tokenAddress, method: METHOD_GET_TOKEN_BALANCE, data: data);
   }
 
+  Future<ContractOutput> getTokenBalanceNFT({
+  required String tokenAddress,
+  required String ownerAddress,
+  required String uuid,
+}) async {
+  final from = publicKeyHex ?? '';
+  if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+  if (ownerAddress.isEmpty) throw ArgumentError('owner address not set');
+  if (uuid.isEmpty) throw ArgumentError('uuid not set');
+
+  KeyManager.validateEDDSAPublicKeyHex(from);
+  KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+  KeyManager.validateEDDSAPublicKeyHex(ownerAddress);
+
+  final data = <String, dynamic>{
+    "owner_address": ownerAddress,
+    "token_uuid": uuid,
+  };
+  return getState(
+    to: tokenAddress,
+    method: METHOD_GET_TOKEN_BALANCE_NFT,
+    data: data,
+  );
+}
+
   Future<ContractOutput> listTokenBalances({
     String tokenAddress = '',
     String ownerAddress = '',

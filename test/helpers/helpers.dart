@@ -26,6 +26,18 @@ class TestUser {
   });
 }
 
+class MintedNftPrize {
+  final String tokenAddress;
+  final String tokenUuid;
+  final String symbol;
+
+  const MintedNftPrize({
+    required this.tokenAddress,
+    required this.tokenUuid,
+    required this.symbol,
+  });
+}
+
 String repeatHex(String hexChar, int len) => List.filled(len, hexChar).join();
 
 Future<String> validPublicKeyHex() async {
@@ -52,9 +64,7 @@ Future<TestUser> newTestUser(String name) async {
 String sha256Hex(String input) {
   final bytes = utf8.encode(input);
   final digest = sha256.convert(bytes);
-  return digest.bytes
-      .map((b) => b.toRadixString(16).padLeft(2, '0'))
-      .join();
+  return digest.bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 }
 
 Future<TwoFinanceBlockchain> setupClient() async {
@@ -173,6 +183,141 @@ Future<void> expectFtBalance(
   expect(balance.amount, equals(expectedAmount));
 }
 
+Future<BalanceState> getFtBalanceState(
+  TwoFinanceBlockchain c, {
+  required String tokenAddress,
+  required String ownerAddress,
+}) async {
+  final out = await c.getTokenBalance(
+    tokenAddress: tokenAddress,
+    ownerAddress: ownerAddress,
+  );
+
+  expect(out.states, isNotNull);
+  expect(out.states!, isNotEmpty);
+
+  final balance = unmarshalState(
+    out.states!.first.object,
+    (json) => BalanceState.fromJson(json),
+  );
+
+  expect(balance.ownerAddress, equals(ownerAddress));
+  expect(balance.tokenAddress, equals(tokenAddress));
+
+  return balance;
+}
+
+Future<String> getFtBalanceAmount(
+  TwoFinanceBlockchain c, {
+  required String tokenAddress,
+  required String ownerAddress,
+}) async {
+  final balance = await getFtBalanceState(
+    c,
+    tokenAddress: tokenAddress,
+    ownerAddress: ownerAddress,
+  );
+
+  expect(balance.amount, isNotNull);
+  return balance.amount!;
+}
+
+Future<BalanceState> getNftBalanceState(
+  TwoFinanceBlockchain c, {
+  required String tokenAddress,
+  required String ownerAddress,
+  required String uuid,
+}) async {
+  final out = await c.getTokenBalanceNFT(
+    tokenAddress: tokenAddress,
+    ownerAddress: ownerAddress,
+    uuid: uuid,
+  );
+
+  expect(out, isA<ContractOutput>());
+  expect(out.states, isNotNull);
+  expect(out.states!, isNotEmpty);
+
+  final balance = unmarshalState(
+    out.states!.first.object,
+    (json) => BalanceState.fromJson(json),
+  );
+
+  expect(balance.tokenAddress, equals(tokenAddress));
+  expect(balance.ownerAddress, equals(ownerAddress));
+  expect(balance.tokenUuid, equals(uuid));
+
+  return balance;
+}
+
+Future<void> expectNftBalance(
+  TwoFinanceBlockchain c, {
+  required String tokenAddress,
+  required String ownerAddress,
+  required String uuid,
+  required String expectedAmount,
+  required String expectedTokenType,
+  bool? expectedBurned,
+}) async {
+  final balance = await getNftBalanceState(
+    c,
+    tokenAddress: tokenAddress,
+    ownerAddress: ownerAddress,
+    uuid: uuid,
+  );
+
+  expect(balance.amount, equals(expectedAmount));
+  expect(balance.tokenType, equals(expectedTokenType));
+
+  if (expectedBurned != null) {
+    expect(balance.burned, equals(expectedBurned));
+  }
+}
+
+Future<void> enterRaffleFtAndExpect(
+  TwoFinanceBlockchain c, {
+  required TestUser user,
+  required String raffleAddress,
+  required String payTokenAddress,
+  required int tickets,
+  required String expectedPaid,
+  required String requestUuid,
+  bool setSigner = true,
+}) async {
+  if (setSigner) {
+    await c.setPrivateKey(user.privateKey);
+  }
+
+  final out = await c.enterRaffle(
+    address: raffleAddress,
+    tickets: tickets,
+    payTokenAddress: payTokenAddress,
+    tokenType: TOKEN_TYPE_FUNGIBLE,
+    uuid: requestUuid,
+  );
+
+  expect(out, isA<ContractOutput>());
+  expect(out.logs, isNotNull);
+  expect(out.logs!, isNotEmpty);
+
+  final log = out.logs!.first;
+  expect(log.contractAddress, equals(raffleAddress));
+  expect(log.logType, equals('Raffle_Entered'));
+
+  final event = unmarshalEvent<Map<String, dynamic>>(
+    log.event,
+    (json) => Map<String, dynamic>.from(json as Map),
+  );
+
+  expect(event['raffle_address'], equals(raffleAddress));
+  expect(event['entrant'], equals(user.publicKey));
+  expect(event['tickets'], equals(tickets));
+  expect(event['paid'], equals(expectedPaid));
+  expect(event['pay_token_address'], equals(payTokenAddress));
+  expect(event['uuid'], isA<String>());
+  expect((event['uuid'] as String).isNotEmpty, isTrue);
+}
+
 Future<void> allowAndMintFtUsers(
   TwoFinanceBlockchain c, {
   required String tokenAddress,
@@ -180,10 +325,9 @@ Future<void> allowAndMintFtUsers(
   required String amount,
   required int decimals,
 }) async {
-  final outAllow = await c.allowUsers(
-    tokenAddress,
-    {for (final user in users) user.publicKey: true},
-  );
+  final outAllow = await c.allowUsers(tokenAddress, {
+    for (final user in users) user.publicKey: true,
+  });
 
   expect(outAllow, isA<ContractOutput>());
   expect(outAllow.logs, isNotNull);
@@ -191,8 +335,8 @@ Future<void> allowAndMintFtUsers(
   expect(outAllow.logs!.first.logType, equals('Token_AllowedUsersAdded'));
   expect(outAllow.logs!.first.contractAddress, equals(tokenAddress));
 
-  final expectedAmount =
-      (BigInt.parse(amount) * BigInt.from(10).pow(decimals)).toString();
+  final expectedAmount = (BigInt.parse(amount) * BigInt.from(10).pow(decimals))
+      .toString();
 
   for (final user in users) {
     final outMint = await c.mintToken(
@@ -232,15 +376,20 @@ Future<String> createBasicToken(
   await c.setPrivateKey(ownerPrivateKey);
 
   final deployedToken = await c.deployContract1(TOKEN_CONTRACT_V1);
+
+  expect(deployedToken, isA<ContractOutput>());
   expect(deployedToken.logs, isNotNull);
   expect(deployedToken.logs!, isNotEmpty);
 
-  final tokenAddress = deployedToken.logs!.first.contractAddress;
+  final deployLog = deployedToken.logs!.first;
+  final tokenAddress = deployLog.contractAddress;
+
   expect(tokenAddress, isNotEmpty);
 
   final symbol = '2F${randSuffix(4)}';
-  final totalSupply =
-      tokenType == TOKEN_TYPE_FUNGIBLE ? amt(1000000, decimals) : '1';
+  final totalSupply = tokenType == TOKEN_TYPE_FUNGIBLE
+      ? amt(1000000, decimals)
+      : '1';
 
   final feeTiersList = requireFee
       ? <Map<String, dynamic>>[
@@ -288,7 +437,216 @@ Future<String> createBasicToken(
   expect(outAddToken, isA<ContractOutput>());
   expect(outAddToken.logs, isNotNull);
   expect(outAddToken.logs!, isNotEmpty);
-  expect(outAddToken.logs!.first.contractAddress, equals(tokenAddress));
+
+  final addTokenLog = outAddToken.logs!.first;
+  expect(addTokenLog.contractAddress, equals(tokenAddress));
+  expect(addTokenLog.logType, equals('Token_Created'));
+
+  final tokenEvent = unmarshalEvent<Map<String, dynamic>>(
+    addTokenLog.event,
+    (json) => Map<String, dynamic>.from(json as Map),
+  );
+
+  expect(tokenEvent['address'], equals(tokenAddress));
+  expect(tokenEvent['token_type'], equals(tokenType));
 
   return tokenAddress;
+}
+
+Future<MintedNftPrize> createAndMintNftPrize(
+  TwoFinanceBlockchain c, {
+  required TestUser ownerUser,
+  String name = 'Raffle Prize NFT',
+  String description = 'raffle nft prize e2e',
+  String image = 'https://example.com/raffle-prize-nft.png',
+  int mintCount = 2,
+}) async {
+  await c.setPrivateKey(ownerUser.privateKey);
+
+  final deployedPrize = await c.deployContract1(TOKEN_CONTRACT_V1);
+  expect(deployedPrize, isA<ContractOutput>());
+  expect(deployedPrize.logs, isNotNull);
+  expect(deployedPrize.logs!, isNotEmpty);
+
+  final prizeTokenAddress = deployedPrize.logs!.first.contractAddress;
+  expect(prizeTokenAddress, isNotEmpty);
+
+  final prizeFeeUser = await newTestUser('prize-fee');
+  final prizeExpiredAt = DateTime.now().toUtc().add(const Duration(days: 365));
+  final prizeSymbol =
+      'RFNFT_${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+
+  final outAddPrizeToken = await c.addToken(
+    address: prizeTokenAddress,
+    symbol: prizeSymbol,
+    name: name,
+    decimals: 0,
+    totalSupply: '1',
+    description: description,
+    owner: ownerUser.publicKey,
+    image: image,
+    website: 'https://example.com',
+    tagsSocialMedia: const {'twitter': 'https://twitter.com/2finance'},
+    tagsCategory: const {'category': 'Collectibles'},
+    tags: const {'tag1': 'NFT', 'tag2': 'Raffle'},
+    creator: '2Finance Test',
+    creatorWebsite: 'https://creator.example',
+    allowedUsers: const <String, bool>{},
+    blockedUsers: const <String, bool>{},
+    frozenAccounts: const <String, dynamic>{},
+    feeTiersList: const <Map<String, dynamic>>[],
+    feeAddress: prizeFeeUser.publicKey,
+    freezeAuthorityRevoked: false,
+    mintAuthorityRevoked: false,
+    updateAuthorityRevoked: false,
+    paused: false,
+    expiredAt: prizeExpiredAt,
+    assetGlbUri: 'https://example.com/prize.glb',
+    tokenType: TOKEN_TYPE_NON_FUNGIBLE,
+    transferable: true,
+    stablecoin: false,
+  );
+
+  expect(outAddPrizeToken, isA<ContractOutput>());
+  expect(outAddPrizeToken.logs, isNotNull);
+  expect(outAddPrizeToken.logs!, isNotEmpty);
+
+  final prizeAddLog = outAddPrizeToken.logs!.first;
+  expect(prizeAddLog.contractAddress, equals(prizeTokenAddress));
+  expect(prizeAddLog.logType, equals('Token_Created'));
+
+  final prizeTokenEvent = unmarshalEvent<Map<String, dynamic>>(
+    prizeAddLog.event,
+    (json) => Map<String, dynamic>.from(json as Map),
+  );
+
+  expect(prizeTokenEvent['address'], equals(prizeTokenAddress));
+  expect(prizeTokenEvent['token_type'], equals(TOKEN_TYPE_NON_FUNGIBLE));
+
+  final outMintPrizeToken = await c.mintToken(
+    tokenAddress: prizeTokenAddress,
+    mintTo: ownerUser.publicKey,
+    amount: mintCount.toString(),
+    decimals: 0,
+    tokenType: TOKEN_TYPE_NON_FUNGIBLE,
+  );
+
+  expect(outMintPrizeToken, isA<ContractOutput>());
+  expect(outMintPrizeToken.logs, isNotNull);
+  expect(outMintPrizeToken.logs!, isNotEmpty);
+
+  final mintPrizeLog = outMintPrizeToken.logs!.first;
+  expect(mintPrizeLog.contractAddress, equals(prizeTokenAddress));
+  expect(mintPrizeLog.logType, equals('Token_Minted_NFT'));
+
+  final mintPrizeEvent = unmarshalEvent<Map<String, dynamic>>(
+    mintPrizeLog.event,
+    (json) => Map<String, dynamic>.from(json as Map),
+  );
+
+  expect(mintPrizeEvent['token_address'], equals(prizeTokenAddress));
+  expect(mintPrizeEvent['mint_to'], equals(ownerUser.publicKey));
+  expect(mintPrizeEvent['token_type'], equals(TOKEN_TYPE_NON_FUNGIBLE));
+
+  final prizeUuidList = List<String>.from(
+    mintPrizeEvent['token_uuid_list'] as List,
+  );
+  expect(prizeUuidList, hasLength(mintCount));
+
+  final prizeUuid = prizeUuidList.first;
+  expect(prizeUuid.isNotEmpty, isTrue);
+
+  await expectNftBalance(
+    c,
+    tokenAddress: prizeTokenAddress,
+    ownerAddress: ownerUser.publicKey,
+    uuid: prizeUuid,
+    expectedAmount: '1',
+    expectedTokenType: TOKEN_TYPE_NON_FUNGIBLE,
+    expectedBurned: false,
+  );
+
+  return MintedNftPrize(
+    tokenAddress: prizeTokenAddress,
+    tokenUuid: prizeUuid,
+    symbol: prizeSymbol,
+  );
+}
+
+Future<void> prepareRaffleParticipantsAndFunding(
+  TwoFinanceBlockchain c, {
+  required TestUser ownerUser,
+  required List<TestUser> players,
+  required String paymentTokenAddress,
+  required String prizeTokenAddress,
+  required String raffleAddress,
+  required String fundingAmount,
+}) async {
+  await c.setPrivateKey(ownerUser.privateKey);
+
+  final allowedUsers = <String, bool>{
+    ownerUser.publicKey: true,
+    for (final player in players) player.publicKey: true,
+    raffleAddress: true,
+  };
+
+  final outAllowPayToken = await c.allowUsers(
+    paymentTokenAddress,
+    allowedUsers,
+  );
+
+  expect(outAllowPayToken, isA<ContractOutput>());
+  expect(outAllowPayToken.logs, isNotNull);
+  expect(outAllowPayToken.logs!, isNotEmpty);
+  expect(
+    outAllowPayToken.logs!.first.logType,
+    equals('Token_AllowedUsersAdded'),
+  );
+  expect(
+    outAllowPayToken.logs!.first.contractAddress,
+    equals(paymentTokenAddress),
+  );
+
+  final outAllowPrizeToken = await c.allowUsers(
+    prizeTokenAddress,
+    allowedUsers,
+  );
+
+  expect(outAllowPrizeToken, isA<ContractOutput>());
+  expect(outAllowPrizeToken.logs, isNotNull);
+  expect(outAllowPrizeToken.logs!, isNotEmpty);
+  expect(
+    outAllowPrizeToken.logs!.first.logType,
+    equals('Token_AllowedUsersAdded'),
+  );
+  expect(
+    outAllowPrizeToken.logs!.first.contractAddress,
+    equals(prizeTokenAddress),
+  );
+
+  for (final player in players) {
+    final outTransfer = await c.transferToken(
+      tokenAddress: paymentTokenAddress,
+      transferTo: player.publicKey,
+      amount: fundingAmount,
+      decimals: 0,
+      tokenType: TOKEN_TYPE_FUNGIBLE,
+      uuid: '',
+    );
+
+    expect(outTransfer, isA<ContractOutput>());
+    expect(outTransfer.logs, isNotNull);
+    expect(outTransfer.logs!, isNotEmpty);
+    expect(
+      outTransfer.logs!.first.contractAddress,
+      equals(paymentTokenAddress),
+    );
+
+    await expectFtBalance(
+      c,
+      tokenAddress: paymentTokenAddress,
+      ownerAddress: player.publicKey,
+      expectedAmount: fundingAmount,
+    );
+  }
 }

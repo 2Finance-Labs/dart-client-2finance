@@ -34,6 +34,8 @@ const String METHOD_UNFREEZE_WALLET = "unfreeze_wallet";
 const String METHOD_GET_TOKEN = "get_Token";
 const String METHOD_LIST_TOKENS = "list_Tokens";
 const String METHOD_GET_TOKEN_BALANCE = "get_TokenBalance";
+const String METHOD_GET_TOKEN_BALANCE_NFT = "get_TokenBalanceNFT";
+
 const String METHOD_LIST_TOKEN_BALANCES = "list_TokenBalances";
 const String METHOD_LIST_TRANSFERS = "list_Transfers";
 
