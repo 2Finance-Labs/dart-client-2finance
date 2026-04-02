@@ -183,6 +183,25 @@ Future<void> expectFtBalance(
   expect(balance.amount, equals(expectedAmount));
 }
 
+
+
+List<String> parseTokenUuidList(dynamic raw) {
+  final items = List<dynamic>.from(raw as List);
+
+  return items.map((item) {
+    if (item is String) return item;
+
+    final map = Map<String, dynamic>.from(item as Map);
+
+    final value = map['token_uuid'] ?? map['uuid'];
+    if (value == null) {
+      throw StateError('token_uuid_list item sem token_uuid/uuid: $map');
+    }
+
+    return value.toString();
+  }).toList();
+}
+
 Future<BalanceState> getFtBalanceState(
   TwoFinanceBlockchain c, {
   required String tokenAddress,
@@ -548,9 +567,9 @@ Future<MintedNftPrize> createAndMintNftPrize(
   expect(mintPrizeEvent['mint_to'], equals(ownerUser.publicKey));
   expect(mintPrizeEvent['token_type'], equals(TOKEN_TYPE_NON_FUNGIBLE));
 
-  final prizeUuidList = List<String>.from(
-    mintPrizeEvent['token_uuid_list'] as List,
-  );
+final prizeUuidList = parseTokenUuidList(
+  mintPrizeEvent['token_uuid_list'],
+);
   expect(prizeUuidList, hasLength(mintCount));
 
   final prizeUuid = prizeUuidList.first;

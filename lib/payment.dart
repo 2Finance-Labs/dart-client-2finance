@@ -1,243 +1,305 @@
 part of two_finance_blockchain;
 
-extension PaymentClient on TwoFinanceBlockchain{
-  // Future<ContractOutput> createPayment({
-  //   required String address,
-  //   required String tokenAddress,
-  //   required String orderId,
-  //   required String payer,
-  //   required String payee,
-  //   required String amount,
-  //   required DateTime expiredAt,
-  // }) async {
-  //   final from = _publicKeyHex!;
-  //   final to = address;
-  //   final contractVersion = PAYMENT_CONTRACT_V1;
-  //   final method = METHOD_CREATE_PAYMENT;
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
+extension PaymentClient on TwoFinanceBlockchain {
+  bool _isZeroLikeDateTime(DateTime value) {
+    final isUnixEpoch = value.millisecondsSinceEpoch == 0;
+    final isGoZeroLike =
+        value.year <= 1 &&
+        value.month == 1 &&
+        value.day == 1 &&
+        value.hour == 0 &&
+        value.minute == 0 &&
+        value.second == 0 &&
+        value.millisecond == 0 &&
+        value.microsecond == 0;
 
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
+    return isUnixEpoch || isGoZeroLike;
+  }
 
-  //   if (tokenAddress.isEmpty) throw Exception("token address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+  String _requireFromAddress() {
+    final from = publicKeyHex ?? '';
+    if (from.isEmpty) {
+      throw ArgumentError('from address not set');
+    }
+    KeyManager.validateEDDSAPublicKeyHex(from);
+    return from;
+  }
 
-  //   if (payer.isEmpty) throw Exception("payer not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(payer);
+  Future<ContractOutput> createPayment({
+    required String address,
+    required String owner,
+    required String tokenAddress,
+    required String orderId,
+    required String payer,
+    required String payee,
+    required String amount,
+    required DateTime expiredAt,
+  }) async {
+    final from = _requireFromAddress();
 
-  //   if (payee.isEmpty) throw Exception("payee not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(payee);
+    if (address.isEmpty) throw ArgumentError('address not set');
+    if (owner.isEmpty) throw ArgumentError('owner not set');
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+    if (payer.isEmpty) throw ArgumentError('payer not set');
+    if (payee.isEmpty) throw ArgumentError('payee not set');
+    if (payer == payee) {
+      throw ArgumentError(
+        'payee and payer cannot be the same: $payee - $payer',
+      );
+    }
+    if (orderId.isEmpty) throw ArgumentError('order_id not set');
+    if (amount.isEmpty) throw ArgumentError('amount not set');
+    if (_isZeroLikeDateTime(expiredAt)) {
+      throw ArgumentError('expired_at not set');
+    }
 
-  //   if (payer == payee) {
-  //     throw Exception("payee and payer cannot be the same: $payee - $payer");
-  //   }
+    KeyManager.validateEDDSAPublicKeyHex(address);
+    KeyManager.validateEDDSAPublicKeyHex(owner);
+    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    KeyManager.validateEDDSAPublicKeyHex(payer);
+    KeyManager.validateEDDSAPublicKeyHex(payee);
 
-  //   if (orderId.isEmpty) throw Exception("order_id not set");
-  //   if (amount.isEmpty) throw Exception("amount not set");
-  //   if (expiredAt == DateTime(0)) throw Exception("expired_at not set");
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_CREATE_PAYMENT,
+      data: {
+        'address': address,
+        'owner': owner,
+        'token_address': tokenAddress,
+        'order_id': orderId,
+        'payer': payer,
+        'payee': payee,
+        'amount': amount,
+        'expired_at': expiredAt.toUtc().toIso8601String(),
+      },
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 
-  //   final data = {
-  //     "address": address,
-  //     "token_address": tokenAddress,
-  //     "order_id": orderId,
-  //     "payer": payer,
-  //     "payee": payee,
-  //     "amount": amount,
-  //     "expired_at": expiredAt.toIso8601String(),
-  //   };
+  Future<ContractOutput> directPay({
+    required String address,
+    required String owner,
+    required String tokenAddress,
+    required String orderId,
+    required String payer,
+    required String payee,
+    required String amount,
+    required DateTime expiredAt,
+  }) async {
+    final from = _requireFromAddress();
 
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-  // }
+    if (address.isEmpty) throw ArgumentError('address not set');
+    if (owner.isEmpty) throw ArgumentError('owner not set');
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+    if (payer.isEmpty) throw ArgumentError('payer not set');
+    if (payee.isEmpty) throw ArgumentError('payee not set');
+    if (payer == payee) {
+      throw ArgumentError(
+        'payee and payer cannot be the same: $payee - $payer',
+      );
+    }
+    if (orderId.isEmpty) throw ArgumentError('order_id not set');
+    if (amount.isEmpty) throw ArgumentError('amount not set');
+    if (_isZeroLikeDateTime(expiredAt)) {
+      throw ArgumentError('expired_at not set');
+    }
 
-  // Future<ContractOutput> directPay({
-  //   required String address,
-  //   required String tokenAddress,
-  //   required String orderId,
-  //   required String payer,
-  //   required String payee,
-  //   required String amount,
-  // }) async {
-  //   final to = _publicKeyHex!;
-  //   final from = address;
-  //   final contractVersion = PAYMENT_CONTRACT_V1;
-  //   final method = METHOD_DIRECT_PAY;
-  //   if (to.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(_publicKeyHex!);
+    KeyManager.validateEDDSAPublicKeyHex(address);
+    KeyManager.validateEDDSAPublicKeyHex(owner);
+    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    KeyManager.validateEDDSAPublicKeyHex(payer);
+    KeyManager.validateEDDSAPublicKeyHex(payee);
 
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_DIRECT_PAY,
+      data: {
+        'address': address,
+        'owner': owner,
+        'token_address': tokenAddress,
+        'order_id': orderId,
+        'payer': payer,
+        'payee': payee,
+        'amount': amount,
+        'expired_at': expiredAt.toUtc().toIso8601String(),
+      },
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 
-  //   if (tokenAddress.isEmpty) throw Exception("token address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+  Future<ContractOutput> authorizePayment({required String address}) async {
+    final from = _requireFromAddress();
 
-  //   if (payer.isEmpty) throw Exception("payer not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(payer);
+    if (address.isEmpty) throw ArgumentError('address not set');
+    KeyManager.validateEDDSAPublicKeyHex(address);
 
-  //   if (payee.isEmpty) throw Exception("payee not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(payee);
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_AUTHORIZE_PAYMENT,
+      data: {'address': address},
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 
-  //   if (orderId.isEmpty) throw Exception("order_id not set");
-  //   if (amount.isEmpty) throw Exception("amount not set");
+  Future<ContractOutput> capturePayment({required String address}) async {
+    final from = _requireFromAddress();
 
-  //   final data = {
-  //     "address": address,
-  //     "token_address": tokenAddress,
-  //     "order_id": orderId,
-  //     "payer": payer,
-  //     "payee": payee,
-  //     "amount": amount,
-  //   };
+    if (address.isEmpty) throw ArgumentError('address not set');
+    KeyManager.validateEDDSAPublicKeyHex(address);
 
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-    
-  // }
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_CAPTURE_PAYMENT,
+      data: {'address': address},
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 
-  // Future<ContractOutput> authorizePayment(String address) async {
-  //   final from = _publicKeyHex!;
-  //   final to = address;
-  //   final contractVersion = PAYMENT_CONTRACT_V1;
-  //   final method = METHOD_AUTHORIZE_PAYMENT;
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
+  Future<ContractOutput> refundPayment({
+    required String address,
+    required String amount,
+  }) async {
+    final from = _requireFromAddress();
 
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
+    if (address.isEmpty) throw ArgumentError('address not set');
+    if (amount.isEmpty) throw ArgumentError('amount not set');
+    KeyManager.validateEDDSAPublicKeyHex(address);
 
-  //   final data = {"address": address};
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-    
-  // }
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_REFUND_PAYMENT,
+      data: {'address': address, 'amount': amount},
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 
-  // Future<ContractOutput> capturePayment(String address) async {
-  //   final from = _publicKeyHex!;
-  //   final to = address;
-  //   final contractVersion = PAYMENT_CONTRACT_V1;
-  //   final method = METHOD_AUTHORIZE_PAYMENT;
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
+  Future<ContractOutput> voidPayment({required String address}) async {
+    final from = _requireFromAddress();
 
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
+    if (address.isEmpty) throw ArgumentError('address not set');
+    KeyManager.validateEDDSAPublicKeyHex(address);
 
-  //   final data = {"address": address};
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-  // }
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_VOID_PAYMENT,
+      data: {'address': address},
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 
-  // Future<ContractOutput> refundPayment(String address, String amount) async {
-  //   final from = _publicKeyHex!;
-  //   final to = address;
-  //   final contractVersion = PAYMENT_CONTRACT_V1;
-  //   final method = METHOD_REFUND_PAYMENT;
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
+  Future<ContractOutput> pausePayment({
+    required String address,
+    required bool paused,
+  }) async {
+    final from = _requireFromAddress();
 
-  //   if (amount.isEmpty) throw Exception("amount not set");
+    if (address.isEmpty) throw ArgumentError('address not set');
+    if (!paused) throw ArgumentError('paused must be true: Pause: $paused');
+    KeyManager.validateEDDSAPublicKeyHex(address);
 
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_PAUSE_PAYMENT,
+      data: {'address': address, 'paused': paused},
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 
-  //   final data = {"address": address, "amount": amount};
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-  // }
+  Future<ContractOutput> unpausePayment({
+    required String address,
+    required bool paused,
+  }) async {
+    final from = _requireFromAddress();
 
-  // Future<ContractOutput> voidPayment(String address) async {
-  //   final from = _publicKeyHex!;
-  //   final to = address;
-  //   final contractVersion = PAYMENT_CONTRACT_V1;
-  //   final method = METHOD_VOID_PAYMENT;
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
+    if (address.isEmpty) throw ArgumentError('address not set');
+    if (paused) throw ArgumentError('paused must be false: Pause: $paused');
+    KeyManager.validateEDDSAPublicKeyHex(address);
 
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_UNPAUSE_PAYMENT,
+      data: {'address': address, 'paused': paused},
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 
-  //   final data = {"address": address};
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-  // }
+  Future<ContractOutput> getPayment({required String address}) async {
+    final from = _requireFromAddress();
 
-  // Future<ContractOutput> pausePayment(String address, bool paused) async {
-  //   final from = _publicKeyHex!;
-  //   final to = address;
-  //   final contractVersion = PAYMENT_CONTRACT_V1;
-  //   final method = METHOD_PAUSE_PAYMENT;
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
+    if (address.isEmpty) throw ArgumentError('payment address must be set');
+    KeyManager.validateEDDSAPublicKeyHex(address);
+    KeyManager.validateEDDSAPublicKeyHex(from);
 
-  //   if (!paused) throw Exception("paused must be true: Pause: $paused");
+    return getState(
+      to: address,
+      method: METHOD_GET_PAYMENT,
+      data: {'address': address},
+    );
+  }
 
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
+  Future<ContractOutput> listPayments({
+    String orderId = '',
+    String tokenAddress = '',
+    List<String> status = const [],
+    String payer = '',
+    String payee = '',
+    int page = 1,
+    int limit = 10,
+    bool ascending = false,
+  }) async {
+    final from = _requireFromAddress();
+    KeyManager.validateEDDSAPublicKeyHex(from);
 
-  //   final data = {"address": address, "paused": paused};
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-  // }
+    if (tokenAddress.isNotEmpty) {
+      KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    }
+    if (payer.isNotEmpty) {
+      KeyManager.validateEDDSAPublicKeyHex(payer);
+    }
+    if (payee.isNotEmpty) {
+      KeyManager.validateEDDSAPublicKeyHex(payee);
+    }
+    if (page < 1) throw ArgumentError('page must be greater than 0');
+    if (limit < 1) throw ArgumentError('limit must be greater than 0');
 
-  // Future<ContractOutput> unpausePayment(String address, bool paused) async {
-  //   final from = _publicKeyHex!;
-  //   final to = address;
-  //   final contractVersion = PAYMENT_CONTRACT_V1;
-  //   final method = METHOD_UNPAUSE_PAYMENT;
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
-
-  //   if (paused) throw Exception("paused must be false: Pause: $paused");
-
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
-
-  //   final data = {"address": address, "paused": paused};
-  //   return signAndSendTransaction(chainID: chainID, from: from, to: to, method: method, data: data, version:version, uuid7:uuid7);
-  // }
-
-  // Future<ContractOutput> getPayment(String address) async {
-  //   final from = _publicKeyHex!;
-  //   final to = address;
-  //   final contractVersion = PAYMENT_CONTRACT_V1;
-  //   final method = METHOD_GET_PAYMENT;
-
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
-
-  //   if (address.isEmpty) throw Exception("payment address must be set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
-
-  //   final data = {"address": address};
-  //   return getState(contractVersion: contractVersion, method: method, data: data);
-  // }
-
-  // Future<ContractOutput> listPayments({
-  //   String payer = "",
-  //   String payee = "",
-  //   String orderId = "",
-  //   String tokenAddress = "",
-  //   List<String> status = const [],
-  //   int page = 1,
-  //   int limit = 10,
-  //   bool ascending = false,
-  // }) async {
-  //   final publicKey = _publicKeyHex!;
-
-  //   if (publicKey.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(publicKey);
-
-  //   if (tokenAddress.isNotEmpty) KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
-  //   if (payer.isNotEmpty) KeyManager.validateEDDSAPublicKeyHex(payer);
-  //   if (payee.isNotEmpty) KeyManager.validateEDDSAPublicKeyHex(payee);
-
-  //   if (page < 1) throw Exception("page must be greater than 0");
-  //   if (limit < 1) throw Exception("limit must be greater than 0");
-
-  //   final data = {
-  //     "token_address": tokenAddress,
-  //     "status": status,
-  //     "payer": payer,
-  //     "payee": payee,
-  //     "page": page,
-  //     "limit": limit,
-  //     "ascending": ascending,
-  //   };
-
-  //   return getState(contractVersion: PAYMENT_CONTRACT_V1, method: METHOD_LIST_PAYMENTS, data: data);
-  // }
+    return getState(
+      to: '',
+      method: METHOD_LIST_PAYMENTS,
+      data: {
+        'order_id': orderId,
+        'token_address': tokenAddress,
+        'status': status,
+        'payer': payer,
+        'payee': payee,
+        'page': page,
+        'limit': limit,
+        'ascending': ascending,
+        'contract_version': PAYMENT_CONTRACT_V1,
+      },
+    );
+  }
 }
