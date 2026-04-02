@@ -1,36 +1,35 @@
 part of 'two_finance_blockchain.dart';
 
 extension Token on TwoFinanceBlockchain {
-
-    Future<ContractOutput> addToken({
-      required String address, // token contract address (deployed)
-      required String symbol,
-      required String name,
-      required int decimals,
-      required String totalSupply,
-      required String description,
-      required String owner,
-      required String image,
-      required String website,
-      required Map<String, String> tagsSocialMedia,
-      required Map<String, String> tagsCategory,
-      required Map<String, String> tags,
-      required String creator,
-      required String creatorWebsite,
-      required Map<String, bool> allowedUsers,
-      required Map<String, bool> blockedUsers,
-      required Map<String, dynamic> frozenAccounts,
-      required List<Map<String, dynamic>> feeTiersList,
-      required String feeAddress,
-      required bool freezeAuthorityRevoked,
-      required bool mintAuthorityRevoked,
-      required bool updateAuthorityRevoked,
-      required bool paused,
-      required DateTime expiredAt,
-      required String assetGlbUri,
-      required String tokenType,
-      required bool transferable,
-      required bool stablecoin,
+  Future<ContractOutput> addToken({
+    required String address, // token contract address (deployed)
+    required String symbol,
+    required String name,
+    required int decimals,
+    required String totalSupply,
+    required String description,
+    required String owner,
+    required String image,
+    required String website,
+    required Map<String, String> tagsSocialMedia,
+    required Map<String, String> tagsCategory,
+    required Map<String, String> tags,
+    required String creator,
+    required String creatorWebsite,
+    required Map<String, bool> allowedUsers,
+    required Map<String, bool> blockedUsers,
+    required Map<String, dynamic> frozenAccounts,
+    required List<Map<String, dynamic>> feeTiersList,
+    required String feeAddress,
+    required bool freezeAuthorityRevoked,
+    required bool mintAuthorityRevoked,
+    required bool updateAuthorityRevoked,
+    required bool paused,
+    required DateTime expiredAt,
+    required String assetGlbUri,
+    required String tokenType,
+    required bool transferable,
+    required bool stablecoin,
   }) async {
     if (symbol.isEmpty) throw ArgumentError('symbol not set');
     if (name.isEmpty) throw ArgumentError('name not set');
@@ -123,9 +122,9 @@ extension Token on TwoFinanceBlockchain {
     const int version = 1;
 
     final JsonMessage data = {
+      "address": tokenAddress,
       "mint_to": mintTo,
       "amount": amountScaled,
-      "token_type": tokenType,
     };
 
     return signAndSendTransaction(
@@ -166,10 +165,14 @@ extension Token on TwoFinanceBlockchain {
     const int version = 1;
 
     final JsonMessage data = {
+      "address": tokenAddress,
+      "burn_from": from,
       "amount": amountScaled,
-      "token_type": tokenType,
-      "uuid": uuid,
     };
+
+    if (tokenType == TOKEN_TYPE_NON_FUNGIBLE) {
+      data["uuids"] = [uuid];
+    }
 
     return signAndSendTransaction(
       chainID: _chainID,
@@ -188,7 +191,7 @@ extension Token on TwoFinanceBlockchain {
     required String amount,
     required int decimals,
     required String tokenType,
-    required String uuid, // usado quando NON_FUNGIBLE
+    required String uuid,
   }) async {
     final from = publicKeyHex ?? '';
     if (transferTo.isEmpty) throw ArgumentError('to address not set');
@@ -198,7 +201,9 @@ extension Token on TwoFinanceBlockchain {
     if (tokenType == TOKEN_TYPE_NON_FUNGIBLE && uuid.isEmpty) {
       throw ArgumentError('uuid not set');
     }
-    if (from == transferTo) throw ArgumentError('from and to addresses are the same');
+    if (from == transferTo) {
+      throw ArgumentError('from and to addresses are the same');
+    }
 
     KeyManager.validateEDDSAPublicKeyHex(from);
     KeyManager.validateEDDSAPublicKeyHex(transferTo);
@@ -213,11 +218,15 @@ extension Token on TwoFinanceBlockchain {
     const int version = 1;
 
     final JsonMessage data = {
+      "address": tokenAddress,
+      "transfer_from": from,
       "transfer_to": transferTo,
       "amount": amountScaled,
-      "token_type": tokenType,
-      "uuid": uuid,
     };
+
+    if (tokenType == TOKEN_TYPE_NON_FUNGIBLE) {
+      data["token_uuid_list"] = [uuid];
+    }
 
     return signAndSendTransaction(
       chainID: _chainID,
@@ -230,7 +239,10 @@ extension Token on TwoFinanceBlockchain {
     );
   }
 
-  Future<ContractOutput> allowUsers(String tokenAddress, Map<String, bool> users) async {
+  Future<ContractOutput> allowUsers(
+    String tokenAddress,
+    Map<String, bool> users,
+  ) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
     if (users.isEmpty) throw ArgumentError('users map is empty');
@@ -247,15 +259,16 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_ADD_ALLOWED_USERS,
-      data: {
-        "allowed_users": users,
-      },
+      data: {"allowed_users": users},
       version: version,
       uuid7: uuid7,
     );
   }
 
-  Future<ContractOutput> disallowUsers(String tokenAddress, Map<String, bool> users) async {
+  Future<ContractOutput> disallowUsers(
+    String tokenAddress,
+    Map<String, bool> users,
+  ) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
     if (users.isEmpty) throw ArgumentError('users map is empty');
@@ -272,15 +285,16 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_REMOVE_ALLOWED_USERS,
-      data: {
-        "allowed_users": users,
-      },
+      data: {"allowed_users": users},
       version: version,
       uuid7: uuid7,
     );
   }
 
-  Future<ContractOutput> blockUsers(String tokenAddress, Map<String, bool> users) async {
+  Future<ContractOutput> blockUsers(
+    String tokenAddress,
+    Map<String, bool> users,
+  ) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
     if (users.isEmpty) throw ArgumentError('users map is empty');
@@ -297,15 +311,16 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_ADD_BLOCKED_USERS,
-      data: {
-        "blocked_users": users,
-      },
+      data: {"blocked_users": users},
       version: version,
       uuid7: uuid7,
     );
   }
 
-  Future<ContractOutput> unblockUsers(String tokenAddress, Map<String, bool> users) async {
+  Future<ContractOutput> unblockUsers(
+    String tokenAddress,
+    Map<String, bool> users,
+  ) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
     if (users.isEmpty) throw ArgumentError('users map is empty');
@@ -322,15 +337,16 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_REMOVE_BLOCKED_USERS,
-      data: {
-        "blocked_users": users,
-      },
+      data: {"blocked_users": users},
       version: version,
       uuid7: uuid7,
     );
   }
 
-  Future<ContractOutput> revokeFreezeAuthority(String tokenAddress, bool revoke) async {
+  Future<ContractOutput> revokeFreezeAuthority(
+    String tokenAddress,
+    bool revoke,
+  ) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
     KeyManager.validateEDDSAPublicKeyHex(from);
@@ -344,13 +360,16 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_REVOKE_FREEZE_AUTHORITY,
-      data: {"freeze_authority_revoked": revoke},
+      data: {"address": tokenAddress, "revoked": revoke},
       version: version,
       uuid7: uuid7,
     );
   }
 
-  Future<ContractOutput> revokeMintAuthority(String tokenAddress, bool revoke) async {
+  Future<ContractOutput> revokeMintAuthority(
+    String tokenAddress,
+    bool revoke,
+  ) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
     KeyManager.validateEDDSAPublicKeyHex(from);
@@ -364,13 +383,16 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_REVOKE_MINT_AUTHORITY,
-      data: {"mint_authority_revoked": revoke},
+      data: {"address": tokenAddress, "revoked": revoke},
       version: version,
       uuid7: uuid7,
     );
   }
 
-  Future<ContractOutput> revokeUpdateAuthority(String tokenAddress, bool revoke) async {
+  Future<ContractOutput> revokeUpdateAuthority(
+    String tokenAddress,
+    bool revoke,
+  ) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
     KeyManager.validateEDDSAPublicKeyHex(from);
@@ -384,7 +406,7 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_REVOKE_UPDATE_AUTHORITY,
-      data: {"update_authority_revoked": revoke},
+      data: {"address": tokenAddress, "revoked": revoke},
       version: version,
       uuid7: uuid7,
     );
@@ -422,6 +444,7 @@ extension Token on TwoFinanceBlockchain {
     const int version = 1;
 
     final data = <String, dynamic>{
+      "address": tokenAddress,
       "symbol": symbol,
       "name": name,
       "decimals": decimals,
@@ -447,8 +470,10 @@ extension Token on TwoFinanceBlockchain {
     );
   }
 
-
-    Future<ContractOutput> freezeWallet(String tokenAddress, String wallet) async {
+  Future<ContractOutput> freezeWallet(
+    String tokenAddress,
+    String wallet,
+  ) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
     if (wallet.isEmpty) throw ArgumentError('wallet not set');
@@ -465,13 +490,16 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_FREEZE_WALLET,
-      data: {"wallet": wallet},
+      data: {"address": tokenAddress, "wallet": wallet},
       version: version,
       uuid7: uuid7,
     );
   }
 
-  Future<ContractOutput> unfreezeWallet(String tokenAddress, String wallet) async {
+  Future<ContractOutput> unfreezeWallet(
+    String tokenAddress,
+    String wallet,
+  ) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
     if (wallet.isEmpty) throw ArgumentError('wallet not set');
@@ -488,13 +516,11 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_UNFREEZE_WALLET,
-      data: {"wallet": wallet},
+      data: {"address": tokenAddress, "wallet": wallet},
       version: version,
       uuid7: uuid7,
     );
   }
-
-
 
   Future<ContractOutput> pauseToken(String tokenAddress) async {
     final from = publicKeyHex ?? '';
@@ -510,7 +536,7 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_PAUSE_TOKEN,
-      data: {"paused": true},
+      data: {"address": tokenAddress, "paused": true},
       version: version,
       uuid7: uuid7,
     );
@@ -530,13 +556,16 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_UNPAUSE_TOKEN,
-      data: {"paused": false},
+      data: {"address": tokenAddress, "paused": false},
       version: version,
       uuid7: uuid7,
     );
   }
 
-  Future<ContractOutput> updateFeeTiers(String tokenAddress, List<Map<String, dynamic>> feeTiersList) async {
+  Future<ContractOutput> updateFeeTiers(
+    String tokenAddress,
+    List<Map<String, dynamic>> feeTiersList,
+  ) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
     if (feeTiersList.isEmpty) throw ArgumentError('fee tiers list is empty');
@@ -552,13 +581,16 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_UPDATE_FEE_TIERS,
-      data: {"fee_tiers_list": feeTiersList},
+      data: {"address": tokenAddress, "fee_tiers_list": feeTiersList},
       version: version,
       uuid7: uuid7,
     );
   }
 
-  Future<ContractOutput> updateFeeAddress(String tokenAddress, String feeAddress) async {
+  Future<ContractOutput> updateFeeAddress(
+    String tokenAddress,
+    String feeAddress,
+  ) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
     if (feeAddress.isEmpty) throw ArgumentError('fee address not set');
@@ -575,16 +607,20 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_UPDATE_FEE_ADDRESS,
-      data: {"fee_address": feeAddress},
+      data: {"address": tokenAddress, "fee_address": feeAddress},
       version: version,
       uuid7: uuid7,
     );
   }
 
-  Future<ContractOutput> updateGlbFile(String tokenAddress, String newAssetGlbUri) async {
+  Future<ContractOutput> updateGlbFile(
+    String tokenAddress,
+    String newAssetGlbUri,
+  ) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
-    if (newAssetGlbUri.isEmpty) throw ArgumentError('new asset GLB URI not set');
+    if (newAssetGlbUri.isEmpty)
+      throw ArgumentError('new asset GLB URI not set');
 
     KeyManager.validateEDDSAPublicKeyHex(from);
     KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
@@ -597,13 +633,16 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_UPDATE_GLB_FILE,
-      data: {"asset_glb_uri": newAssetGlbUri},
+      data: {"address": tokenAddress, "new_asset_glb_uri": newAssetGlbUri},
       version: version,
       uuid7: uuid7,
     );
   }
 
-  Future<ContractOutput> transferableToken(String tokenAddress, bool transferable) async {
+  Future<ContractOutput> transferableToken(
+    String tokenAddress,
+    bool transferable,
+  ) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
     KeyManager.validateEDDSAPublicKeyHex(from);
@@ -617,13 +656,16 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_TRANSFERABLE_TOKEN,
-      data: {"transferable": transferable},
+      data: {"address": tokenAddress, "transferable": transferable},
       version: version,
       uuid7: uuid7,
     );
   }
 
-  Future<ContractOutput> untransferableToken(String tokenAddress, bool transferable) async {
+  Future<ContractOutput> untransferableToken(
+    String tokenAddress,
+    bool transferable,
+  ) async {
     final from = publicKeyHex ?? '';
     if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
 
@@ -638,7 +680,7 @@ extension Token on TwoFinanceBlockchain {
       from: from,
       to: tokenAddress,
       method: METHOD_UNTRANSFERABLE_TOKEN,
-      data: {"transferable": transferable},
+      data: {"address": tokenAddress, "transferable": transferable},
       version: version,
       uuid7: uuid7,
     );
@@ -659,6 +701,7 @@ extension Token on TwoFinanceBlockchain {
     }
 
     final data = <String, dynamic>{
+      "address": tokenAddress,
       "symbol": symbol,
       "name": name,
       "contract_version": TOKEN_CONTRACT_V1,
@@ -714,34 +757,42 @@ extension Token on TwoFinanceBlockchain {
     KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
     KeyManager.validateEDDSAPublicKeyHex(ownerAddress);
 
-    final data = <String, dynamic>{"owner_address": ownerAddress};
-    return getState(to: tokenAddress, method: METHOD_GET_TOKEN_BALANCE, data: data);
+    final data = <String, dynamic>{
+      "address": tokenAddress,
+      "owner_address": ownerAddress,
+    };
+    return getState(
+      to: tokenAddress,
+      method: METHOD_GET_TOKEN_BALANCE,
+      data: data,
+    );
   }
 
   Future<ContractOutput> getTokenBalanceNFT({
-  required String tokenAddress,
-  required String ownerAddress,
-  required String uuid,
-}) async {
-  final from = publicKeyHex ?? '';
-  if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
-  if (ownerAddress.isEmpty) throw ArgumentError('owner address not set');
-  if (uuid.isEmpty) throw ArgumentError('uuid not set');
+    required String tokenAddress,
+    required String ownerAddress,
+    required String uuid,
+  }) async {
+    final from = publicKeyHex ?? '';
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+    if (ownerAddress.isEmpty) throw ArgumentError('owner address not set');
+    if (uuid.isEmpty) throw ArgumentError('uuid not set');
 
-  KeyManager.validateEDDSAPublicKeyHex(from);
-  KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
-  KeyManager.validateEDDSAPublicKeyHex(ownerAddress);
+    KeyManager.validateEDDSAPublicKeyHex(from);
+    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    KeyManager.validateEDDSAPublicKeyHex(ownerAddress);
 
-  final data = <String, dynamic>{
-    "owner_address": ownerAddress,
-    "token_uuid": uuid,
-  };
-  return getState(
-    to: tokenAddress,
-    method: METHOD_GET_TOKEN_BALANCE_NFT,
-    data: data,
-  );
-}
+    final data = <String, dynamic>{
+      "address": tokenAddress,
+      "owner_address": ownerAddress,
+      "token_uuid": uuid,
+    };
+    return getState(
+      to: tokenAddress,
+      method: METHOD_GET_TOKEN_BALANCE_NFT,
+      data: data,
+    );
+  }
 
   Future<ContractOutput> listTokenBalances({
     String tokenAddress = '',
@@ -753,19 +804,20 @@ extension Token on TwoFinanceBlockchain {
     final from = publicKeyHex ?? '';
     KeyManager.validateEDDSAPublicKeyHex(from);
 
-    if (tokenAddress.isNotEmpty) KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
-    if (ownerAddress.isNotEmpty) KeyManager.validateEDDSAPublicKeyHex(ownerAddress);
+    if (tokenAddress.isNotEmpty)
+      KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    if (ownerAddress.isNotEmpty)
+      KeyManager.validateEDDSAPublicKeyHex(ownerAddress);
 
     final data = <String, dynamic>{
+      "address": tokenAddress,
       "owner_address": ownerAddress,
       "page": page,
       "limit": limit,
       "ascending": ascending,
-      "token_address": tokenAddress,
       "contract_version": TOKEN_CONTRACT_V1,
     };
 
     return getState(to: '', method: METHOD_LIST_TOKEN_BALANCES, data: data);
   }
-
 }

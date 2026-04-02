@@ -199,10 +199,7 @@ extension RaffleClient on TwoFinanceBlockchain {
 
     final from = _requireFromAddress();
 
-    final JsonMessage data = {
-      'address': address,
-      'paused': paused,
-    };
+    final JsonMessage data = {'address': address, 'paused': paused};
 
     return signAndSendTransaction(
       chainID: _chainID,
@@ -227,10 +224,7 @@ extension RaffleClient on TwoFinanceBlockchain {
 
     final from = _requireFromAddress();
 
-    final JsonMessage data = {
-      'address': address,
-      'paused': paused,
-    };
+    final JsonMessage data = {'address': address, 'paused': paused};
 
     return signAndSendTransaction(
       chainID: _chainID,
@@ -275,12 +269,8 @@ extension RaffleClient on TwoFinanceBlockchain {
     }
 
     final JsonMessage data = {
-      'address': address,
-      'entrant': from,
       'tickets': tickets,
       'pay_token_address': payTokenAddress,
-      'token_type': tokenType,
-      'uuid': uuid,
     };
 
     return signAndSendTransaction(
@@ -306,10 +296,7 @@ extension RaffleClient on TwoFinanceBlockchain {
 
     final from = _requireFromAddress();
 
-    final JsonMessage data = {
-      'address': address,
-      'reveal_seed': revealSeed,
-    };
+    final JsonMessage data = {'address': address, 'reveal_seed': revealSeed};
 
     return signAndSendTransaction(
       chainID: _chainID,
@@ -348,12 +335,7 @@ extension RaffleClient on TwoFinanceBlockchain {
 
     final from = _requireFromAddress();
 
-    final JsonMessage data = {
-      'address': address,
-      'winner': winner,
-      'token_type': tokenType,
-      'uuid': uuid,
-    };
+    final JsonMessage data = {'prize_uuid': uuid};
 
     return signAndSendTransaction(
       chainID: _chainID,
@@ -401,8 +383,6 @@ extension RaffleClient on TwoFinanceBlockchain {
       'address': address,
       'token_address': tokenAddress,
       'amount': amount,
-      'token_type': tokenType,
-      'uuid': uuid,
     };
 
     return signAndSendTransaction(
@@ -451,9 +431,11 @@ extension RaffleClient on TwoFinanceBlockchain {
       'amount': amount,
       'raffle_address': raffleAddress,
       'token_address': tokenAddress,
-      'token_type': tokenType,
-      'uuid': uuid,
     };
+
+    if (tokenType == TOKEN_TYPE_NON_FUNGIBLE) {
+      data['uuid_nfts'] = [uuid];
+    }
 
     return signAndSendTransaction(
       chainID: _chainID,
@@ -562,11 +544,7 @@ extension RaffleClient on TwoFinanceBlockchain {
       data['active_only'] = activeOnly;
     }
 
-    return getState(
-      to: '',
-      method: METHOD_LIST_RAFFLES,
-      data: data,
-    );
+    return getState(to: '', method: METHOD_LIST_RAFFLES, data: data);
   }
 
   Future<ContractOutput> listPrizes({
@@ -598,10 +576,6 @@ extension RaffleClient on TwoFinanceBlockchain {
       'contract_version': RAFFLE_CONTRACT_V1,
     };
 
-    return getState(
-      to: '',
-      method: METHOD_LIST_PRIZES,
-      data: data,
-    );
+    return getState(to: '', method: METHOD_LIST_PRIZES, data: data);
   }
 }

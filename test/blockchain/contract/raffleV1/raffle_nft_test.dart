@@ -545,7 +545,20 @@ void main() {
       expect(drawEvent['seed_commit_hex'], equals(updatedSeedCommitHex));
       expect(drawEvent['winner_count'], equals(1));
 
-      final winners = List<String>.from(drawEvent['winners'] as List);
+      final winners = List<dynamic>.from(drawEvent['winners'] as List).map((
+        item,
+      ) {
+        if (item is String) return item;
+
+        final map = Map<String, dynamic>.from(item as Map);
+        final value = map['winner'] ?? map['address'] ?? map['public_key'];
+
+        if (value == null) {
+          fail('Formato inesperado em winners: $map');
+        }
+
+        return value.toString();
+      }).toList();
       expect(winners, hasLength(1));
 
       final winner = winners.first;
@@ -573,6 +586,81 @@ void main() {
       // ------------------
       // CLAIM NFT
       // ------------------
+      final winnerPrizeBeforeClaim = await c.getTokenBalanceNFT(
+        tokenAddress: prizeTokenAddress,
+        ownerAddress: winner,
+        uuid: prizeUuid,
+      );
+      expect(winnerPrizeBeforeClaim.states, isNotNull);
+      expect(winnerPrizeBeforeClaim.states, isEmpty);
+
+      await expectNftBalance(
+        c,
+        tokenAddress: prizeTokenAddress,
+        ownerAddress: raffleAddress,
+        uuid: prizeUuid,
+        expectedAmount: '1',
+        expectedTokenType: TOKEN_TYPE_NON_FUNGIBLE,
+        expectedBurned: false,
+      );
+
+      if (winner == player1User.publicKey) {
+        await c.setPrivateKey(player1User.privateKey);
+      } else if (winner == player2User.publicKey) {
+        await c.setPrivateKey(player2User.privateKey);
+      } else {
+        fail('unexpected winner: $winner');
+      }
+
+      final outClaim = await c.claimRaffle(
+        address: raffleAddress,
+        winner: winner,
+        tokenType: TOKEN_TYPE_NON_FUNGIBLE,
+        uuid: rafflePrizeUuid,
+      );
+
+      expect(outClaim, isA<ContractOutput>());
+      expect(outClaim.logs, isNotNull);
+      expect(outClaim.logs!, isNotEmpty);
+
+      final claimLog = outClaim.logs!.first;
+      expect(claimLog.contractAddress, equals(raffleAddress));
+      expect(claimLog.logType, equals('Raffle_Claimed'));
+
+      final claimEvent = unmarshalEvent<JsonMap>(
+        claimLog.event,
+        (json) => Map<String, dynamic>.from(json as Map),
+      );
+
+      expect(claimEvent['address'], equals(raffleAddress));
+      expect(claimEvent['winner'], equals(winner));
+      expect(claimEvent['prize_uuid'], equals(rafflePrizeUuid));
+      expect(claimEvent['token_address'], equals(prizeTokenAddress));
+      expect(claimEvent['amount'], equals(prizeAmount));
+      expect(
+        List<String>.from(claimEvent['uuid_nfts'] as List),
+        equals([prizeUuid]),
+      );
+
+      await expectNftBalance(
+        c,
+        tokenAddress: prizeTokenAddress,
+        ownerAddress: winner,
+        uuid: prizeUuid,
+        expectedAmount: '1',
+        expectedTokenType: TOKEN_TYPE_NON_FUNGIBLE,
+        expectedBurned: false,
+      );
+
+      await expectNftBalance(
+        c,
+        tokenAddress: prizeTokenAddress,
+        ownerAddress: raffleAddress,
+        uuid: prizeUuid,
+        expectedAmount: '1',
+        expectedTokenType: TOKEN_TYPE_NON_FUNGIBLE,
+        expectedBurned: true,
+      );
 
       // ------------------
       // WITHDRAW
@@ -620,8 +708,6 @@ void main() {
       expect(withdrawEvent['address'], equals(raffleAddress));
       expect(withdrawEvent['token_address'], equals(paymentTokenAddress));
       expect(withdrawEvent['amount'], equals(withdrawAmount));
-      expect(withdrawEvent['action'], equals('withdraw'));
-      expect(withdrawEvent['time'], isNotNull);
 
       final ownerPayAfterWithdraw = await getFtBalanceAmount(
         c,
@@ -693,6 +779,7 @@ void main() {
       expect(foundPrize['amount'], equals('1'));
       expect(foundPrize['sponsor'], equals(ownerUser.publicKey));
       expect(foundPrize['winner'], equals(winner));
+      expect(foundPrize['claimed'], isTrue);
       expect(foundPrize['created_at'], isNotNull);
       expect(foundPrize['updated_at'], isNotNull);
     });
