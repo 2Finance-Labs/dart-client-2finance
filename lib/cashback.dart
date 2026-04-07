@@ -1,430 +1,316 @@
-
 part of 'two_finance_blockchain.dart';
-extension Cashback on TwoFinanceBlockchain{
 
-  // // ------------------------------------------------------------------
-  // // AddCashBack (Go: AddCashback)
-  // // ------------------------------------------------------------------
-  // Future<ContractOutput> addCashback({
-  //   required String address,
-  //   required String owner,
-  //   required String tokenAddress,
-  //   required String programType, // fixed-percentage | variable-percentage
-  //   required String percentage,
-  //   required DateTime startAt,
-  //   required DateTime expiredAt,
-  //   required bool paused,
-  // }) async {
-  //   final from = _publicKeyHex!;
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
+extension CashbackClient on TwoFinanceBlockchain {
+  static const String _programTypeFixed = 'fixed-percentage';
+  static const String _programTypeVariable = 'variable-percentage';
 
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
+  bool _isZeroLikeDateTime(DateTime value) {
+    final isUnixEpoch = value.millisecondsSinceEpoch == 0;
+    final isGoZeroLike =
+        value.year <= 1 &&
+        value.month == 1 &&
+        value.day == 1 &&
+        value.hour == 0 &&
+        value.minute == 0 &&
+        value.second == 0 &&
+        value.millisecond == 0 &&
+        value.microsecond == 0;
 
-  //   if (owner.isEmpty) throw Exception("owner not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(owner);
+    return isUnixEpoch || isGoZeroLike;
+  }
 
-  //   if (tokenAddress.isEmpty) throw Exception("token address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+  String _requireFromAddress() {
+    final from = publicKeyHex ?? '';
+    if (from.isEmpty) {
+      throw ArgumentError('from address not set');
+    }
+    KeyManager.validateEDDSAPublicKeyHex(from);
+    return from;
+  }
 
-  //   if (programType != "fixed-percentage" && programType != "variable-percentage") {
-  //     throw Exception("invalid program_type: $programType");
-  //   }
-  //   if (percentage.isEmpty) throw Exception("percentage not set");
-  //   final chainID = _chainID!;
-  //   final to = address;
-  //   final method = METHOD_ADD_CASHBACK;
+  void _validateProgramType(String programType) {
+    if (programType != _programTypeFixed &&
+        programType != _programTypeVariable) {
+      throw ArgumentError('invalid program_type: $programType');
+    }
+  }
 
-  //   final JsonRawMessage data = mapToJsonRawMessage({
-  //     "address": address,
-  //     "owner": owner,
-  //     "token_address": tokenAddress,
-  //     "program_type": programType,
-  //     "percentage": percentage,
-  //     "start_at": startAt.toIso8601String(),
-  //     "expired_at": expiredAt.toIso8601String(),
-  //     "paused": paused,
-  //   });
+  Future<ContractOutput> addCashback({
+    required String address,
+    required String owner,
+    required String tokenAddress,
+    required String programType,
+    required String percentage,
+    required DateTime startAt,
+    required DateTime expiredAt,
+    required bool paused,
+  }) async {
+    final from = _requireFromAddress();
 
-  //   final version = 1;
-  //   final uuid7 = newUUID7();
+    if (address.isEmpty) throw ArgumentError('address not set');
+    if (owner.isEmpty) throw ArgumentError('owner not set');
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+    if (percentage.isEmpty) throw ArgumentError('percentage not set');
+    if (_isZeroLikeDateTime(startAt)) {
+      throw ArgumentError('start_at not set');
+    }
+    if (_isZeroLikeDateTime(expiredAt)) {
+      throw ArgumentError('expired_at not set');
+    }
 
-  //   try {
-  //     return await signAndSendTransaction(
-  //       chainID: chainID,
-  //       from: from,
-  //       to: to,
-  //       method: method,
-  //       data: data,
-  //       version: version,
-  //       uuid7: uuid7,
-  //     );
-  //   } catch (e) {
-  //     throw Exception("failed to add cashback: $e");
-  //   }
-  // }
+    KeyManager.validateEDDSAPublicKeyHex(address);
+    KeyManager.validateEDDSAPublicKeyHex(owner);
+    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    _validateProgramType(programType);
 
-  // // ------------------------------------------------------------------
-  // // UpdateCashback (Go: UpdateCashback)
-  // // ------------------------------------------------------------------
-  // Future<ContractOutput> updateCashback({
-  //   required String address,
-  //   required String tokenAddress,
-  //   required String programType,
-  //   required String percentage,
-  //   required DateTime startAt,
-  //   required DateTime expiredAt,
-  // }) async {
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
+    if (owner != from) {
+      throw ArgumentError('owner must match from address');
+    }
 
-  //   if (tokenAddress.isNotEmpty) {
-  //     KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
-  //   }
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_ADD_CASHBACK,
+      data: {
+        'address': address,
+        'owner': owner,
+        'token_address': tokenAddress,
+        'program_type': programType,
+        'percentage': percentage,
+        'start_at': startAt.toUtc().toIso8601String(),
+        'expired_at': expiredAt.toUtc().toIso8601String(),
+        'paused': paused,
+      },
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 
-  //   if (programType != "fixed-percentage" && programType != "variable-percentage") {
-  //     throw Exception("invalid program_type: $programType");
-  //   }
-  //   if (percentage.isEmpty) throw Exception("percentage not set");
-  //   final chainID = _chainID!;
-  //   final from = _publicKeyHex!;
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
+  Future<ContractOutput> updateCashback({
+    required String address,
+    required String tokenAddress,
+    required String programType,
+    required String percentage,
+    required DateTime startAt,
+    required DateTime expiredAt,
+  }) async {
+    final from = _requireFromAddress();
 
-  //   final to = address;
-  //   final method = METHOD_UPDATE_CASHBACK;
+    if (address.isEmpty) throw ArgumentError('address not set');
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+    if (percentage.isEmpty) throw ArgumentError('percentage not set');
+    if (_isZeroLikeDateTime(startAt)) {
+      throw ArgumentError('start_at not set');
+    }
+    if (_isZeroLikeDateTime(expiredAt)) {
+      throw ArgumentError('expired_at not set');
+    }
 
-  //   final JsonRawMessage data = mapToJsonRawMessage({
-  //     "address": address,
-  //     "token_address": tokenAddress,
-  //     "program_type": programType,
-  //     "percentage": percentage,
-  //     "start_at": startAt.toIso8601String(),
-  //     "expired_at": expiredAt.toIso8601String(),
-  //   });
+    KeyManager.validateEDDSAPublicKeyHex(address);
+    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    _validateProgramType(programType);
 
-  //   final version = 1;
-  //   final uuid7 = newUUID7();
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_UPDATE_CASHBACK,
+      data: {
+        'address': address,
+        'token_address': tokenAddress,
+        'program_type': programType,
+        'percentage': percentage,
+        'start_at': startAt.toUtc().toIso8601String(),
+        'expired_at': expiredAt.toUtc().toIso8601String(),
+      },
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 
-  //   return signAndSendTransaction(
-  //     chainID: chainID,
-  //     from: from,
-  //     to: to,
-  //     method: method,
-  //     data: data,
-  //     version: version,
-  //     uuid7: uuid7,
-  //   );
-  // }
+  Future<ContractOutput> pauseCashback({
+    required String address,
+    required bool paused,
+  }) async {
+    final from = _requireFromAddress();
 
-  // // ------------------------------------------------------------------
-  // // PauseCashBack (Go: PauseCashback)
-  // // ------------------------------------------------------------------
-  // Future<ContractOutput> pauseCashback({
-  //   required String address,
-  //   required bool pause,
-  // }) async {
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
+    if (address.isEmpty) throw ArgumentError('address not set');
+    if (!paused) throw ArgumentError('paused must be true: Pause: $paused');
+    KeyManager.validateEDDSAPublicKeyHex(address);
 
-  //   if (!pause) {
-  //     throw Exception("pause must be true: Pause: $pause");
-  //   }
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_PAUSE_CASHBACK,
+      data: {
+        'address': address,
+        'paused': paused,
+      },
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 
-  //   final chainID = _chainID!;
-  //   final from = _publicKeyHex!;
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
+  Future<ContractOutput> unpauseCashback({
+    required String address,
+    required bool paused,
+  }) async {
+    final from = _requireFromAddress();
 
-  //   final to = address;
-  //   final method = METHOD_PAUSE_CASHBACK;
+    if (address.isEmpty) throw ArgumentError('address not set');
+    if (paused) throw ArgumentError('paused must be false: Pause: $paused');
+    KeyManager.validateEDDSAPublicKeyHex(address);
 
-  //   final JsonRawMessage data = mapToJsonRawMessage({
-  //     "address": address,
-  //     "paused": pause,
-  //   });
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_UNPAUSE_CASHBACK,
+      data: {
+        'address': address,
+        'paused': paused,
+      },
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 
-  //   final version = 1;
-  //   final uuid7 = newUUID7();
+  Future<ContractOutput> depositCashbackFunds({
+    required String address,
+    required String tokenAddress,
+    required String amount,
+  }) async {
+    final from = _requireFromAddress();
 
-  //   return signAndSendTransaction(
-  //     chainID: chainID,
-  //     from: from,
-  //     to: to,
-  //     method: method,
-  //     data: data,
-  //     version: version,
-  //     uuid7: uuid7,
-  //   );
-  // }
+    if (address.isEmpty) throw ArgumentError('address not set');
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+    if (amount.isEmpty) throw ArgumentError('amount not set');
 
-  // // ------------------------------------------------------------------
-  // // UnpauseCashback (Go: UnpauseCashback)
-  // // ------------------------------------------------------------------
-  // Future<ContractOutput> unpauseCashback({
-  //   required String address,
-  //   required bool pause,
-  // }) async {
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
+    KeyManager.validateEDDSAPublicKeyHex(address);
+    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
 
-  //   if (pause) {
-  //     throw Exception("pause must be false: Pause: $pause");
-  //   }
-  //   final chainID = _chainID!;
-  //   final from = _publicKeyHex!;
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_DEPOSIT_CASHBACK,
+      data: {
+        'address': address,
+        'token_address': tokenAddress,
+        'amount': amount,
+      },
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 
-  //   final to = address;
-  //   final method = METHOD_UNPAUSE_CASHBACK;
+  Future<ContractOutput> withdrawCashbackFunds({
+    required String address,
+    required String tokenAddress,
+    required String amount,
+  }) async {
+    final from = _requireFromAddress();
 
-  //   final JsonRawMessage data = mapToJsonRawMessage({
-  //     "address": address,
-  //     "paused": pause,
-  //   });
+    if (address.isEmpty) throw ArgumentError('address not set');
+    if (tokenAddress.isEmpty) throw ArgumentError('token address not set');
+    if (amount.isEmpty) throw ArgumentError('amount not set');
 
-  //   final version = 1;
-  //   final uuid7 = newUUID7();
+    KeyManager.validateEDDSAPublicKeyHex(address);
+    KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
 
-  //   return signAndSendTransaction(
-  //     chainID: chainID,
-  //     from: from,
-  //     to: to,
-  //     method: method,
-  //     data: data,
-  //     version: version,
-  //     uuid7: uuid7,
-  //   );
-  // }
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_WITHDRAW_CASHBACK,
+      data: {
+        'address': address,
+        'token_address': tokenAddress,
+        'amount': amount,
+      },
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 
-  // // ------------------------------------------------------------------
-  // // DepositCashBack (Go: DepositCashbackFunds)
-  // // ------------------------------------------------------------------
-  // Future<ContractOutput> depositCashbackFunds({
-  //   required String address,
-  //   required String tokenAddress,
-  //   required String amount,
-  //   required String tokenType,
-  //   required String uuid, // required if non-fungible
-  // }) async {
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
+  Future<ContractOutput> getCashback({required String address}) async {
+    final from = _requireFromAddress();
 
-  //   if (amount.isEmpty) throw Exception("amount not set");
-  //   if (tokenType.isEmpty) throw Exception("token type not set");
+    if (address.isEmpty) throw ArgumentError('cashback address must be set');
+    KeyManager.validateEDDSAPublicKeyHex(address);
+    KeyManager.validateEDDSAPublicKeyHex(from);
 
-  //   if (tokenType == Domain.NON_FUNGIBLE && uuid.isEmpty) {
-  //     throw Exception("uuid must be set for non-fungible tokens");
-  //   }
+    return getState(
+      to: address,
+      method: METHOD_GET_CASHBACK,
+      data: {'address': address},
+    );
+  }
 
-  //   if (tokenAddress.isEmpty) throw Exception("token address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
-  //   final chainID = _chainID!;
-  //   final from = _publicKeyHex!;
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
-  
-  //   final to = address;
-  //   final method = METHOD_DEPOSIT_CASHBACK;
+  Future<ContractOutput> listCashbacks({
+    String owner = '',
+    String tokenAddress = '',
+    String programType = '',
+    required bool paused,
+    int page = 1,
+    int limit = 10,
+    bool ascending = false,
+  }) async {
+    final from = _requireFromAddress();
+    KeyManager.validateEDDSAPublicKeyHex(from);
 
-  //   final JsonRawMessage data = mapToJsonRawMessage({
-  //     "address": address,
-  //     "token_address": tokenAddress,
-  //     "amount": amount,
-  //     "token_type": tokenType,
-  //     "uuid": uuid,
-  //   });
+    if (owner.isNotEmpty) {
+      KeyManager.validateEDDSAPublicKeyHex(owner);
+    }
+    if (tokenAddress.isNotEmpty) {
+      KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
+    }
+    if (programType.isNotEmpty) {
+      _validateProgramType(programType);
+    }
+    if (page < 1) throw ArgumentError('page must be greater than 0');
+    if (limit < 1) throw ArgumentError('limit must be greater than 0');
 
-  //   final version = 1;
-  //   final uuid7 = newUUID7();
+    return getState(
+      to: '',
+      method: METHOD_LIST_CASHBACKS,
+      data: {
+        'owner': owner,
+        'program_type': programType,
+        'paused': paused,
+        'page': page,
+        'limit': limit,
+        'ascending': ascending,
+        'token_address': tokenAddress,
+        'contract_version': CASHBACK_CONTRACT_V1,
+      },
+    );
+  }
 
-  //   try {
-  //     return await signAndSendTransaction(
-  //       chainID: chainID,
-  //       from: from,
-  //       to: to,
-  //       method: method,
-  //       data: data,
-  //       version: version,
-  //       uuid7: uuid7,
-  //     );
-  //   } catch (e) {
-  //     throw Exception("failed to deposit cashback: $e");
-  //   }
-  // }
+  Future<ContractOutput> claimCashback({
+    required String address,
+    required String amount,
+  }) async {
+    final from = _requireFromAddress();
 
-  // // ------------------------------------------------------------------
-  // // WithdrawCashBack (Go: WithdrawCashbackFunds)
-  // // ------------------------------------------------------------------
-  // Future<ContractOutput> withdrawCashbackFunds({
-  //   required String address,
-  //   required String tokenAddress,
-  //   required String amount,
-  //   required String tokenType,
-  //   required String uuid, // required if non-fungible
-  // }) async {
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
+    if (address.isEmpty) throw ArgumentError('address not set');
+    if (amount.isEmpty) throw ArgumentError('amount not set');
 
-  //   if (amount.isEmpty) throw Exception("amount not set");
-  //   if (tokenType.isEmpty) throw Exception("token type not set");
+    KeyManager.validateEDDSAPublicKeyHex(address);
 
-  //   if (tokenType == Domain.NON_FUNGIBLE && uuid.isEmpty) {
-  //     throw Exception("uuid must be set for non-fungible tokens");
-  //   }
-
-  //   if (tokenAddress.isEmpty) throw Exception("token address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
-  //   final chainID = _chainID!;
-  //   final from = _publicKeyHex!;
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
-
-  //   final to = address;
-  //   final method = METHOD_WITHDRAW_CASHBACK;
-
-  //   final JsonRawMessage data = mapToJsonRawMessage({
-  //     "address": address,
-  //     "token_address": tokenAddress,
-  //     "amount": amount,
-  //     "token_type": tokenType,
-  //     "uuid": uuid,
-  //   });
-
-  //   final version = 1;
-  //   final uuid7 = newUUID7();
-
-  //   return signAndSendTransaction(
-  //     chainID: chainID,
-  //     from: from,
-  //     to: to,
-  //     method: method,
-  //     data: data,
-  //     version: version,
-  //     uuid7: uuid7,
-  //   );
-  // }
-
-  // // ------------------------------------------------------------------
-  // // GetCashBack (Go: GetCashback)
-  // // ------------------------------------------------------------------
-  // Future<ContractOutput> getCashback({
-  //   required String address,
-  // }) async {
-  //   final from = _publicKeyHex!;
-
-  //   if (address.isEmpty) throw Exception("cashback address must be set");
-  //   if (from.isEmpty) throw Exception("from address not set");
-
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
-
-  //   final method = METHOD_GET_CASHBACK;
-
-  //   // Go passes nil data, here we pass empty raw message
-  //   return getState(
-  //     address: address,
-  //     method: method,
-  //     data: emptyJsonRawMessage(),
-  //   );
-  // }
-
-  // // ------------------------------------------------------------------
-  // // ListCashBack (Go: ListCashbacks)
-  // // ------------------------------------------------------------------
-  // Future<ContractOutput> listCashbacks({
-  //   required String owner,
-  //   required String tokenAddress,
-  //   required String programType,
-  //   required bool paused,
-  //   required int page,
-  //   required int limit,
-  //   required bool ascending,
-  // }) async {
-  //   final from = _publicKeyHex!;
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
-
-  //   if (owner.isNotEmpty) KeyManager.validateEDDSAPublicKeyHex(owner);
-  //   if (tokenAddress.isNotEmpty) KeyManager.validateEDDSAPublicKeyHex(tokenAddress);
-
-  //   if (programType.isNotEmpty &&
-  //       programType != "fixed-percentage" &&
-  //       programType != "variable-percentage") {
-  //     throw Exception("invalid program_type: $programType");
-  //   }
-
-  //   if (page < 1) throw Exception("page must be greater than 0");
-  //   if (limit < 1) throw Exception("limit must be greater than 0");
-
-  //   final method = METHOD_LIST_CASHBACKS;
-
-  //   final JsonRawMessage data = mapToJsonRawMessage({
-  //     "owner": owner,
-  //     "program_type": programType,
-  //     "paused": paused,
-  //     "page": page,
-  //     "limit": limit,
-  //     "ascending": ascending,
-  //     "token_address": tokenAddress,
-  //     "contract_version": CASHBACK_CONTRACT_V1,
-  //   });
-
-  //   // Go: GetState("", method, data)
-  //   return getState(
-  //     address: "",
-  //     method: method,
-  //     data: data,
-  //   );
-  // }
-
-  // // ------------------------------------------------------------------
-  // // ClaimCashback (Go: ClaimCashback)
-  // // ------------------------------------------------------------------
-  // Future<ContractOutput> claimCashback({
-  //   required String address,
-  //   required String amount,
-  //   required String tokenType,
-  //   required String uuid, // required if non-fungible
-  // }) async {
-  //   if (address.isEmpty) throw Exception("address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(address);
-
-  //   if (amount.isEmpty) throw Exception("amount not set");
-  //   if (tokenType.isEmpty) throw Exception("token type not set");
-
-  //   if (tokenType == Domain.NON_FUNGIBLE && uuid.isEmpty) {
-  //     throw Exception("uuid must be set for non-fungible tokens");
-  //   }
-
-  //   final chainID = _chainID!;
-  //   final from = _publicKeyHex!;
-  //   if (from.isEmpty) throw Exception("from address not set");
-  //   KeyManager.validateEDDSAPublicKeyHex(from);
-
-  //   final to = address;
-  //   final method = METHOD_CLAIM_CASHBACK;
-
-  //   final JsonRawMessage data = mapToJsonRawMessage({
-  //     "address": address,
-  //     "amount": amount,
-  //     "token_type": tokenType,
-  //     "uuid": uuid,
-  //   });
-
-  //   final version = 1;
-  //   final uuid7 = newUUID7();
-
-  //   return signAndSendTransaction(
-  //     chainID: chainID,
-  //     from: from,
-  //     to: to,
-  //     method: method,
-  //     data: data,
-  //     version: version,
-  //     uuid7: uuid7,
-  //   );
-  // }
+    return signAndSendTransaction(
+      chainID: _chainID,
+      from: from,
+      to: address,
+      method: METHOD_CLAIM_CASHBACK,
+      data: {
+        'address': address,
+        'amount': amount,
+      },
+      version: 1,
+      uuid7: newUUID7(),
+    );
+  }
 }
