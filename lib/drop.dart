@@ -282,7 +282,7 @@ extension DropClient on TwoFinanceBlockchain {
       'program_address': programAddress,
       'token_address': tokenAddress,
       'amount': amount,
-      'uuid': uuids,
+      'uuids': uuids,
     };
 
     return signAndSendTransaction(
@@ -339,7 +339,7 @@ extension DropClient on TwoFinanceBlockchain {
       'program_address': programAddress,
       'token_address': tokenAddress,
       'amount': amount,
-      'uuid': uuids,
+      'uuids': uuids,
     };
 
 
@@ -448,6 +448,26 @@ extension DropClient on TwoFinanceBlockchain {
       to: address,
       method: METHOD_GET_DROP,
       data: const <String, dynamic>{},
+    );
+  }
+
+  Future<ContractOutput> lastClaimed({
+    required String address,
+    required String wallet,
+  }) async {
+    final from = _requireDropFromAddress();
+
+    if (address.isEmpty) throw ArgumentError('drop address must be set');
+    if (wallet.isEmpty) throw ArgumentError('wallet must be set');
+
+    _validateDropAddress(from, 'from address');
+    _validateDropAddress(address, 'drop address');
+    _validateDropAddress(wallet, 'wallet address');
+
+    return getState(
+      to: address,
+      method: METHOD_LAST_CLAIMED_DROP,
+      data: {'wallet': wallet},
     );
   }
 

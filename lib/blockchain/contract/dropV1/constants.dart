@@ -19,5 +19,5 @@ const String METHOD_MANUAL_ATTEST_ELIGIBILITY =
 
 const String METHOD_GET_DROP = "get_Drop";
 const String METHOD_LIST_DROPS = "list_Drops";
-const String METHOD_CHECK_ELIGIBILITY = "check_Eligibility";
-const String METHOD_UPDATE_SETTINGS = "update_Settings";
+const String METHOD_LAST_CLAIMED_DROP = "lastClaimed_Drop";
+
