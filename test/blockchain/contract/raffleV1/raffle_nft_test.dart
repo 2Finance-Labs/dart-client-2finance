@@ -243,14 +243,13 @@ void main() {
       final rafflePrizeUuid = addPrizeEvent['uuid'] as String;
       expect(rafflePrizeUuid.isNotEmpty, isTrue);
 
-      await expectNftBalance(
-        c,
+      final ownerPrizeAfterAdd = await c.getTokenBalanceNFT(
         tokenAddress: prizeTokenAddress,
         ownerAddress: ownerUser.publicKey,
         uuid: prizeUuid,
-        expectedAmount: '1',
-        expectedTokenType: TOKEN_TYPE_NON_FUNGIBLE,
       );
+      expect(ownerPrizeAfterAdd.states, isNotNull);
+      expect(ownerPrizeAfterAdd.states, isEmpty);
 
       await expectNftBalance(
         c,
@@ -652,15 +651,13 @@ void main() {
         expectedBurned: false,
       );
 
-      await expectNftBalance(
-        c,
+      final rafflePrizeAfterClaim = await c.getTokenBalanceNFT(
         tokenAddress: prizeTokenAddress,
         ownerAddress: raffleAddress,
         uuid: prizeUuid,
-        expectedAmount: '1',
-        expectedTokenType: TOKEN_TYPE_NON_FUNGIBLE,
-        expectedBurned: true,
       );
+      expect(rafflePrizeAfterClaim.states, isNotNull);
+      expect(rafflePrizeAfterClaim.states, isEmpty);
 
       // ------------------
       // WITHDRAW
