@@ -11,6 +11,7 @@ import 'package:two_finance_blockchain/blockchain/utils/json.dart';
 import 'package:two_finance_blockchain/two_finance_blockchain.dart';
 import 'package:two_finance_blockchain/blockchain/utils/marshal.dart';
 import 'package:test/test.dart';
+import 'package:web3dart/contracts.dart';
 import '../../../helpers/helpers.dart';
 
 void main() async {
@@ -63,17 +64,17 @@ void main() async {
             final firstLog = contractLogs.first;
 
             // agora decodifica o event (base64 -> bytes) e faz unmarshalEvent
-            final deployed = unmarshalEvent<domain.Contract>(
+            final contractEvent = unmarshalEvent<domain.Contract>(
                 firstLog.event,
                 domain.Contract.fromJson,
             );
 
-            expect(deployed.address, isNotEmpty);
-            expect(deployed.contractVersion, equals(WALLET_CONTRACT_V1));
-            print('Deployed contract at address: ${deployed.address}');
+            expect(contractEvent.address, isNotEmpty);
+            expect(contractEvent.contractVersion, equals(WALLET_CONTRACT_V1));
+            print('Deployed contract at address: ${contractEvent.address}');
             print('Deployed public key: ${kp.publicKey}');
 
-            final addWalletOutput = await c.addWallet(deployed.address, kp.publicKey);
+            final addWalletOutput = await c.addWallet(contractEvent.address, kp.publicKey);
             expect(addWalletOutput, isNotNull);
             expect(addWalletOutput.logs, isNotNull);
             expect(addWalletOutput.logs!, isNotEmpty);
@@ -83,7 +84,7 @@ void main() async {
             expect(addWalletLog.logIndex, 1);
             expect(addWalletLog.transactionHash, isNotEmpty);
             expect(addWalletLog.contractVersion, WALLET_CONTRACT_V1);
-            expect(addWalletLog.contractAddress, deployed.address);
+            expect(addWalletLog.contractAddress, contractEvent.address);
             expect(addWalletLog.event, isNotEmpty);
 
             final createdWallet = unmarshalEvent<walletDomain.Wallet>(
@@ -92,9 +93,9 @@ void main() async {
             );
 
             expect(createdWallet.publicKey, equals(kp.publicKey));
-            expect(createdWallet.address, equals(deployed.address));
+            expect(createdWallet.address, equals(contractEvent.address));
 
-            final getWalletOutput = await c.getWalletByAddress(deployed.address);
+            final getWalletOutput = await c.getWalletByAddress(contractEvent.address);
             expect(getWalletOutput, isNotNull);
             expect(getWalletOutput.states, isNotNull);
             expect(getWalletOutput.states!, isNotEmpty);
@@ -111,7 +112,7 @@ void main() async {
             );
 
             expect(walletState.publicKey, equals(kp.publicKey));
-            expect(walletState.address, equals(deployed.address));
+            expect(walletState.address, equals(contractEvent.address));
             expect(walletState.createdAt, isNotNull);
             expect(walletState.createdAt, isA<DateTime>());
             expect(walletState.updatedAt, isNotNull);

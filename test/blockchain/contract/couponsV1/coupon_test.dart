@@ -230,7 +230,7 @@ void main() {
 
         final outBalance = await c.listTokenBalances(
           tokenAddress: couponTokenAddress,
-          ownerAddress: couponAddress,
+          ownerAddress: voucherOwner,
           page: 1,
           limit: 3,
           ascending: true,
@@ -248,7 +248,7 @@ void main() {
 
         final firstBalance = balanceStates.first;
         expect(firstBalance['token_address'], equals(couponTokenAddress));
-        expect(firstBalance['owner_address'], equals(couponAddress));
+        expect(firstBalance['owner_address'], equals(voucherOwner));
         expect(firstBalance['amount'], equals('1'));
         expect(firstBalance['token_uuid'], isNotNull);
         expect((firstBalance['token_uuid'] as String).isNotEmpty, isTrue);
