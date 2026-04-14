@@ -1,15 +1,8 @@
-import 'dart:convert';
-import 'dart:typed_data';
-
-import 'package:mqtt_client/mqtt_client.dart';
 import 'package:test/test.dart';
 import 'package:two_finance_blockchain/blockchain/contract/dropV1/constants.dart';
 import 'package:two_finance_blockchain/blockchain/contract/tokenV1/constants.dart';
-import 'package:two_finance_blockchain/blockchain/keys/keys.dart';
-import 'package:two_finance_blockchain/blockchain/transaction/transaction.dart';
 import 'package:two_finance_blockchain/blockchain/types/types.dart';
 import 'package:two_finance_blockchain/blockchain/utils/marshal.dart';
-import 'package:two_finance_blockchain/infra/mqtt/mqtt.dart';
 import 'package:two_finance_blockchain/two_finance_blockchain.dart';
 
 import 'drop_test_helpers.dart';
@@ -195,6 +188,13 @@ void main() {
           paused: false,
         );
 
+        final actualPostLinks = Map<String, dynamic>.from(
+          (stateAfterUpdate['post_links'] as Map?) ?? const {},
+        );
+
+        expect(actualPostLinks['https://example.com/post-ft'], isTrue);
+        expect(actualPostLinks['https://example.com/post-ft-updated'], isTrue);
+
         // ------------------
         // ALLOW ORACLE
         // ------------------
@@ -235,6 +235,17 @@ void main() {
           tokenAddress: tokenAddress,
           ownerAddress: dropAddress,
           expectedAmount: '300',
+        );
+
+        await c.setPrivateKey(claimerUser.privateKey);
+
+        await expectLater(
+          c.claimDrop(address: dropAddress),
+          throwsA(
+            predicate(
+              (e) => e.toString().contains('is not eligible for this drop'),
+            ),
+          ),
         );
 
         // ------------------
@@ -289,6 +300,30 @@ void main() {
             (stateAfterClaim['claimed_wallets'] as Map?) ?? const {},
           )[claimerUser.publicKey],
           isTrue,
+        );
+
+
+        // ------------------
+        // DISALLOW ORACLE
+        // ------------------
+        await c.setPrivateKey(ownerUser.privateKey);
+        final outDisallowOracles = await c.disallowOracles(
+          address: dropAddress,
+          oracles: {oracleUser.publicKey: true},
+        );
+        expect(outDisallowOracles.logs, isNotNull);
+        expect(outDisallowOracles.logs!, isNotEmpty);
+        expect(
+          outDisallowOracles.logs!.first.logType,
+          equals('Drop_Oracles_Disallowed'),
+        );
+
+        final stateAfterOracleDisallow = await getDropState(c, dropAddress);
+        expect(
+          Map<String, dynamic>.from(
+            (stateAfterOracleDisallow['allowed_oracles'] as Map?) ?? const {},
+          )[oracleUser.publicKey],
+          isNull,
         );
 
         // ------------------
@@ -368,9 +403,9 @@ void main() {
       timeout: testTimeout,
     );
 
-    // ==============
+    // --------------
     // TEST GET DROP
-    // ==============
+    // --------------
     test('GetDrop: success and errors', () async {
       final c = await setupClient();
       addTearDown(() => teardownClient(c));
@@ -473,10 +508,99 @@ void main() {
       );
     }, timeout: testTimeout);
 
-    // =================
+    test('LastClaimed', () async {
+      final c = await setupClient();
+      addTearDown(() => teardownClient(c));
+
+      final ownerUser = await newTestUser('owner');
+      final claimerUser = await newTestUser('claimer');
+      final oracleUser = await newTestUser('oracle');
+
+      final tokenAddress = await createBasicToken(
+        c,
+        ownerPrivateKey: ownerUser.privateKey,
+        ownerPublicKey: ownerUser.publicKey,
+        decimals: 0,
+        requireFee: false,
+        tokenType: TOKEN_TYPE_FUNGIBLE,
+        stablecoin: false,
+      );
+
+      await c.setPrivateKey(ownerUser.privateKey);
+      final deployed = await c.deployContract1(DROP_CONTRACT_V1);
+      final dropAddress = deployed.logs!.first.contractAddress;
+      expect(dropAddress, isNotEmpty);
+
+      final startAt = DateTime.now().toUtc().subtract(const Duration(minutes: 5));
+      final expireAt = DateTime.now().toUtc().add(const Duration(hours: 2));
+
+      await c.newDrop(
+        address: dropAddress,
+        programAddress: ownerUser.publicKey,
+        tokenAddress: tokenAddress,
+        owner: ownerUser.publicKey,
+        title: 'drop last claimed test',
+        description: 'desc',
+        shortDescription: 'short',
+        imageUrl: 'https://img.png',
+        bannerUrl: 'https://banner.png',
+        categories: const {'airdrop': true},
+        socialRequirements: const {'follow_x': true},
+        postLinks: const {'https://x.com/post/1': true},
+        verificationType: 'ORACLE',
+        startAt: startAt,
+        expireAt: expireAt,
+        requestLimit: 100,
+        claimAmount: '10',
+        claimIntervalSeconds: 3600,
+      );
+
+      final outAllowOracles = await c.allowOracles(
+        address: dropAddress,
+        oracles: {oracleUser.publicKey: true},
+      );
+      expect(outAllowOracles.logs, isNotNull);
+      expect(outAllowOracles.logs!, isNotEmpty);
+
+      await c.setPrivateKey(ownerUser.privateKey);
+
+      final outDeposit = await c.depositDrop(
+        address: dropAddress,
+        programAddress: ownerUser.publicKey,
+        tokenAddress: tokenAddress,
+        amount: '100',
+      );
+      expect(outDeposit.logs, isNotNull);
+      expect(outDeposit.logs!, isNotEmpty);
+      expect(outDeposit.logs!.first.logType, equals('Drop_Deposited'));
+
+      final outAttest = await c.attestParticipantEligibility(
+        address: dropAddress,
+        wallet: claimerUser.publicKey,
+        approved: true,
+      );
+      expect(outAttest.logs, isNotNull);
+      expect(outAttest.logs!, isNotEmpty);
+
+      await c.setPrivateKey(claimerUser.privateKey);
+      final outClaim = await c.claimDrop(address: dropAddress);
+      expect(outClaim.logs, isNotNull);
+      expect(outClaim.logs!, isNotEmpty);
+      expect(outClaim.logs!.first.logType, equals('Drop_Claimed'));
+
+final outLastClaimed = await c.lastClaimed(
+  address: dropAddress,
+  wallet: claimerUser.publicKey,
+);
+
+expect(outLastClaimed, isA<ContractOutput>());
+      
+    }, timeout: testTimeout);
+
+    // -----------------
     // TEST LIST DROPS
-    // =================
-    test('ListDrops: success and errors', () async {
+    // -----------------
+    test('ListDrops', () async {
       final c = await setupClient();
       addTearDown(() => teardownClient(c));
 

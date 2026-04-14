@@ -38,6 +38,8 @@ class MintedNftPrize {
   });
 }
 
+typedef JsonMap = Map<String, dynamic>;
+
 String repeatHex(String hexChar, int len) => List.filled(len, hexChar).join();
 
 Future<String> validPublicKeyHex() async {
@@ -182,8 +184,6 @@ Future<void> expectFtBalance(
   expect(balance.tokenAddress, equals(tokenAddress));
   expect(balance.amount, equals(expectedAmount));
 }
-
-
 
 List<String> parseTokenUuidList(dynamic raw) {
   final items = List<dynamic>.from(raw as List);
@@ -405,7 +405,8 @@ Future<String> createBasicToken(
 
   expect(tokenAddress, isNotEmpty);
 
-  final symbol = '2F${randSuffix(4)}';
+  final symbol =
+      '2F${DateTime.now().microsecondsSinceEpoch.toRadixString(16)}${randSuffix(4).toUpperCase()}';
   final totalSupply = tokenType == TOKEN_TYPE_FUNGIBLE
       ? amt(1000000, decimals)
       : '1';
@@ -567,9 +568,7 @@ Future<MintedNftPrize> createAndMintNftPrize(
   expect(mintPrizeEvent['mint_to'], equals(ownerUser.publicKey));
   expect(mintPrizeEvent['token_type'], equals(TOKEN_TYPE_NON_FUNGIBLE));
 
-final prizeUuidList = parseTokenUuidList(
-  mintPrizeEvent['token_uuid_list'],
-);
+  final prizeUuidList = parseTokenUuidList(mintPrizeEvent['token_uuid_list']);
   expect(prizeUuidList, hasLength(mintCount));
 
   final prizeUuid = prizeUuidList.first;

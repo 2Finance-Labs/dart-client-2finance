@@ -19,5 +19,4 @@ const String METHOD_MANUAL_ATTEST_ELIGIBILITY =
 
 const String METHOD_GET_DROP = "get_Drop";
 const String METHOD_LIST_DROPS = "list_Drops";
-const String METHOD_LAST_CLAIMED_DROP = "lastClaimed_Drop";
-
+const String METHOD_LAST_CLAIMED_DROP = "last_Claimed_Drop";

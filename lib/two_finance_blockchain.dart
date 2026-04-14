@@ -3,9 +3,10 @@ library two_finance_blockchain;
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:io';
 
 import 'package:cryptography/cryptography.dart';
-import 'package:mqtt_client/mqtt_client.dart' show MqttClient, MqttConnectionState, MqttPublishMessage, MqttPublishPayload;
+import 'package:mqtt_client/mqtt_client.dart' show MqttPublishMessage, MqttPublishPayload;
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:uuid/uuid.dart';
 
@@ -179,17 +180,27 @@ class TwoFinanceBlockchain {
       throw Exception("Active private key is not initialized");
     }
     final tx = newTx.get();
-    final txSigned = await signTransaction( privateKey ?? "", tx);
+    final txSigned = await signTransaction(privateKey, tx);
     // Send to network
     final responseBytes = await sendTransaction(
       REQUEST_METHOD_SEND_TRANSACTION,
       txSigned,
-      _replyTo!,
+      _replyTo,
     );
     // Decode response
     final decoded = json.decode(utf8.decode(responseBytes));
-    final result = ContractOutput.fromJson(decoded);
-    return result;
+    if (decoded is Map<String, dynamic>) {
+      return ContractOutput.fromJson(decoded);
+    }
+    if (decoded is int && decoded == 0) {
+      return ContractOutput(states: const <StateType>[], logs: const <Log>[]);
+    }
+    if (decoded == null) {
+      return ContractOutput();
+    }
+    throw Exception(
+      'unexpected transaction response type: ${decoded.runtimeType}',
+    );
   }
 
   Future<ContractOutput> getState({
@@ -207,10 +218,11 @@ class TwoFinanceBlockchain {
       final responseBytes = await sendTransaction(
         REQUEST_METHOD_GET_STATE,
         txInput,
-        _replyTo!,
+        _replyTo,
       );
 
       final dynamic decoded = json.decode(utf8.decode(responseBytes));
+      stderr.writeln('DEBUG getState response decoded: $decoded');
 
       // ✅ caso normal: veio um objeto JSON (ContractOutput)
       if (decoded is Map<String, dynamic>) {
